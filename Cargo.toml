@@ -1,0 +1,10 @@
+[package]
+name = "atarashii_imap"
+version = "0.1.0"
+authors = ["Alex Maslakov <me@gildedhonour.com>"]
+repository = "https://github.com/GildedHonour/atarashii_imap"
+description = "IMAP client for Rust"
+readme = "README.md"
+license = "Apache-2.0"
+
+[dependencies]
