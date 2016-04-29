@@ -21,13 +21,13 @@
 extern crate openssl;
 
 use std::net::TcpStream;
-use std::io::Write;
+use std::io::{Read, Write};
 use openssl::ssl::{SslContext, SslStream};
 mod error;
 
 
 pub enum TcpStreamSecurity {
-  Basic,
+  Plain,
   StartTls,
   SslTls
 }
@@ -35,7 +35,7 @@ pub enum TcpStreamSecurity {
 impl TcpStreamSecurity {
   fn port(&self) -> u16 {
     match *self {
-      TcpStreamSecurity::Basic | TcpStreamSecurity::StartTls => 143,
+      TcpStreamSecurity::Plain | TcpStreamSecurity::StartTls => 143,
       TcpStreamSecurity::SslTls => 993
     }
   }
@@ -45,7 +45,9 @@ pub enum Authentication {
   Normal,
   EncryptedPassword,
   Ntlm,
-  KerberosGssApi
+  Kerberos,
+  GssApi,
+  Skey
 }
 
 pub struct Mailbox {
@@ -59,14 +61,16 @@ pub struct Connection {
 }
 
 impl Connection {
-  pub fn open(host: &str, tss: TcpStreamSecurity) -> () {
-    match tss {
-      TcpStreamSecurity::Basic => TcpStream::connect((host, tss.port())),
-      TcpStreamSecurity::StartTls => TcpStream::connect((host, tss.port())),
-      TcpStreamSecurity::SslTls => TcpStream::connect((host, tss.port()))
-    };
-
+  pub fn open_plain(host: &str) -> () {
+    let tcp_conn = TcpStream::connect((host, TcpStreamSecurity::Plain.port()));
     unimplemented!()
+  }
+
+  pub fn open_secure(host: &str, sctx: SslContext) -> () {
+    let tcp_conn = TcpStream::connect((host, TcpStreamSecurity::SslTls.port()));
+    let ssocket = SslStream::connect(&sctx, tcp_conn);
+    unimplemented!()
+  
   }
 
   fn send_cmd(&mut self, cmd: &str) {

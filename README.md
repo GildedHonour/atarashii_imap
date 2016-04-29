@@ -1,7 +1,7 @@
 新しい IMAP client
 ================================================
 
-新しい (atarashii/new) IMAP client in Rust. It supports plain and secure connection.
+新しい (atarashii/new) IMAP client in Rust. It supports plain and secure connections.
 
 ### In progress
 It's under development...
@@ -9,7 +9,7 @@ It's under development...
 
 ### Example
 ```rust
-  let conn = Connection::open("gmail.com", TcpStreamSecurity::SslTls);
+let conn = Connection::open("gmail.com", TcpStreamSecurity::SslTls);
   //......
 ```
 
