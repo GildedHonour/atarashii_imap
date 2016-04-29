@@ -20,44 +20,67 @@
  */
 
 use std::net::TcpStream;
-use std::result;
+use std::result::Result as StdResult;
+use error::*;
 
-pub enum Error {
-  Append,
-  Search,
-  Fetch,
-  Store,
-  Copy,
-  UidCommand
+pub type Result<T> = StdResult<T, error::Error>;
+
+const SSL_DEFAULT_PORT: u16 = 993;
+const DEFAULT_PORT: u16 = 143;
+
+pub struct Mailbox {
+
 }
 
-pub type Result<T> = Result<T, Error>;
+pub struct Client {
+  host: String, 
+  port: u16
+}
 
-fn execute_cmd()
+impl Client {
+  pub fn new(host: &str) -> Client {
+    let mut stream = TcpStream::connect((host, DEFAULT_PORT));
 
-pub fn select_cmd()
-pub fn examine_cmd()
-pub fn create_cmd()
-pub fn delete_cmd()
-pub fn rename_cmd()
-pub fn subscribe_cmd()
-pub fn unsubscribe_cmd()
-pub fn list_cmd()
-pub fn lsub_cmd()
-pub fn status_cmd()
-pub fn append_cmd()
-pub fn expunge_cmd()
-pub fn search_cmd()
-pub fn fetch_cmd()
-pub fn copy_cmd()
-pub fn store_cmd()
-pub fn uid_cmd()
-pub fn check_cmd()
-pub fn close_cmd()
+    unimplemented!()
+  }
+
+  fn is_secure(&self) -> bool {
+    self.port == SSL_DEFAULT_PORT
+  }
+
+  // pub fn new_ssl()
+  // pub fn new_tls()
+
+  // pub fn connect()
+  // fn execute_cmd()
+
+  // pub fn select_cmd()
+  // pub fn examine_cmd()
+  // pub fn create_cmd()
+  // pub fn delete_cmd()
+  // pub fn rename_cmd()
+  // pub fn subscribe_cmd()
+  // pub fn unsubscribe_cmd()
+  // pub fn list_cmd()
+  // pub fn lsub_cmd()
+  // pub fn status_cmd()
+  // pub fn append_cmd()
+  // pub fn expunge_cmd()
+  // pub fn search_cmd()
+  // pub fn fetch_cmd()
+  // pub fn copy_cmd()
+  // pub fn store_cmd()
+  // pub fn uid_cmd()
+  // pub fn check_cmd()
+  // pub fn close_cmd()
+}
+
+
+
 
 #[cfg(test)]
 mod tests {
-    #[test]
-    fn it_works() {
-    }
+  #[test]
+  fn it_works() {
+  }
 }
