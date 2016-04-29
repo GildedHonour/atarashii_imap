@@ -20,10 +20,32 @@
  */
 
 use std::net::TcpStream;
+use std::io::Write;
+
 mod error;
 
-const SSL_DEFAULT_PORT: u16 = 993;
-const DEFAULT_PORT: u16 = 143;
+
+pub enum TcpStreamSecurity {
+  Basic,
+  StartTls,
+  SslTls
+}
+
+impl TcpStreamSecurity {
+  fn port(&self) -> u16 {
+    match *self {
+      TcpStreamSecurity::Basic | TcpStreamSecurity::StartTls => 143,
+      TcpStreamSecurity::SslTls => 993
+    }
+  }
+}
+
+pub enum Authentication {
+  Normal,
+  EncryptedPassword,
+  Ntlm,
+  KerberosGssApi
+}
 
 pub struct Mailbox {
 
@@ -31,25 +53,30 @@ pub struct Mailbox {
 
 pub struct Client {
   host: String, 
-  port: u16
+  port: u16,
+  tcp_stream: TcpStream
 }
 
 impl Client {
-  pub fn new(host: &str) -> Client {
-    let mut stream = TcpStream::connect((host, DEFAULT_PORT));
+  pub fn new(host: &str, tss: TcpStreamSecurity) -> Client {
+    let mut stream = TcpStream::connect((host, tss.port()));
 
     unimplemented!()
   }
 
-  fn is_secure(&self) -> bool {
-    self.port == SSL_DEFAULT_PORT
-  }
+  // fn is_secure(&self) -> bool {
+  //   self.port == SSL_DEFAULT_PORT
+  // }
 
   // pub fn new_ssl()
   // pub fn new_tls()
-
   // pub fn connect()
-  // fn execute_cmd()
+
+  fn send_cmd(&mut self, cmd: &str) {
+    self.tcp_stream.write(cmd.as_bytes());
+    unimplemented!()
+  }
+
 
   // pub fn select_cmd()
   // pub fn examine_cmd()
@@ -70,10 +97,8 @@ impl Client {
   // pub fn uid_cmd()
   // pub fn check_cmd()
   // pub fn close_cmd()
+
 }
-
-
-
 
 #[cfg(test)]
 mod tests {
