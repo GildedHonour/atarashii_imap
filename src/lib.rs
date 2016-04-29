@@ -20,10 +20,7 @@
  */
 
 use std::net::TcpStream;
-use std::result::Result as StdResult;
-use error::*;
-
-pub type Result<T> = StdResult<T, error::Error>;
+mod error;
 
 const SSL_DEFAULT_PORT: u16 = 993;
 const DEFAULT_PORT: u16 = 143;
