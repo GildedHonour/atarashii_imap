@@ -18,10 +18,11 @@
  * https://github.com/GildedHonour/atarashii_imap
  *
  */
+extern crate openssl;
 
 use std::net::TcpStream;
 use std::io::Write;
-
+use openssl::ssl::{SslContext, SslStream};
 mod error;
 
 
@@ -51,26 +52,22 @@ pub struct Mailbox {
 
 }
 
-pub struct Client {
+pub struct Connection {
   host: String, 
   port: u16,
   tcp_stream: TcpStream
 }
 
-impl Client {
-  pub fn new(host: &str, tss: TcpStreamSecurity) -> Client {
-    let mut stream = TcpStream::connect((host, tss.port()));
+impl Connection {
+  pub fn open(host: &str, tss: TcpStreamSecurity) -> () {
+    match tss {
+      TcpStreamSecurity::Basic => TcpStream::connect((host, tss.port())),
+      TcpStreamSecurity::StartTls => TcpStream::connect((host, tss.port())),
+      TcpStreamSecurity::SslTls => TcpStream::connect((host, tss.port()))
+    };
 
     unimplemented!()
   }
-
-  // fn is_secure(&self) -> bool {
-  //   self.port == SSL_DEFAULT_PORT
-  // }
-
-  // pub fn new_ssl()
-  // pub fn new_tls()
-  // pub fn connect()
 
   fn send_cmd(&mut self, cmd: &str) {
     self.tcp_stream.write(cmd.as_bytes());

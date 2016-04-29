@@ -8,3 +8,4 @@ readme = "README.md"
 license = "Apache-2.0"
 
 [dependencies]
+openssl = "0.7.10"
