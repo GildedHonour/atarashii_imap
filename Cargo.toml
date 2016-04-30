@@ -9,3 +9,4 @@ license = "Apache-2.0"
 
 [dependencies]
 openssl = "0.7.10"
+regex = "0.1.69"

@@ -9,8 +9,15 @@ It's under development...
 
 ### Example
 ```rust
-let conn = Connection::open("gmail.com", TcpStreamSecurity::SslTls);
-  //......
+match Connection::open_secure("imap.gmail.com", "login", "password") {
+  ResultOk(conn) => {
+    let items = conn.list_cmd();
+    //......
+  },
+
+  Err(e) => 
+}
+
 ```
 
 

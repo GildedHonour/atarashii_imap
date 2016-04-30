@@ -19,12 +19,19 @@
  *
  */
 extern crate openssl;
+extern crate regex;
 
+use regex::Regex;
 use std::net::TcpStream;
 use std::io::{Read, Write};
 use openssl::ssl::{SslContext, SslStream};
+use std::result;
+
 mod error;
 
+pub struct OkResult {
+  pub data: Option<Vec<String>>
+}
 
 pub enum TcpStreamSecurity {
   Plain,
@@ -57,25 +64,64 @@ pub struct Mailbox {
 pub struct Connection {
   host: String, 
   port: u16,
-  tcp_stream: TcpStream
+  tcp_stream: TcpStream,
+  tag: u32
 }
 
+const CARRET_RETURN_CHAR: i32 = 0x0d;
+const LINE_RETURN_CHAR: i32 = 0x0a;
+const MIN_SUCCESSFUL_RESPONSE_LEN: i32 = 2;
+
 impl Connection {
-  pub fn open_plain(host: &str) -> () {
-    let tcp_conn = TcpStream::connect((host, TcpStreamSecurity::Plain.port()));
-    unimplemented!()
+
+  fn new() -> Connection {
+    Connection { tag: 1, port: 1, host: "todo" }
   }
 
-  pub fn open_secure(host: &str, sctx: SslContext) -> () {
+  pub fn open_plain(host: &str, login: &str, password: &str) -> Connection {
+    match TcpStream::connect((host, TcpStreamSecurity::Plain.port())) {
+      Ok(tcp_conn) => {
+        let mut buf = Vec::new();
+        let conn = Connection::new();
+        match tcp_conn.read_to_end(&mut buf) {
+          Ok(bytes_read) => {
+            //if OK exists then success
+
+            //then login_cmd
+            match conn.login_cmd(login, password) {
+              ResultOk(login_res) =>
+              LoginError(e) =>
+            }
+          },
+
+          Err(e) => unimplemented!()
+          
+        }
+      },
+
+      Err(e) => unimplemented!() 
+    }
+  }
+
+  pub fn open_secure(host: &str, sctx: SslContext, login: &str, password: &str) -> () {
     let tcp_conn = TcpStream::connect((host, TcpStreamSecurity::SslTls.port()));
     let ssocket = SslStream::connect(&sctx, tcp_conn);
     unimplemented!()
   
   }
 
-  fn send_cmd(&mut self, cmd: &str) {
-    self.tcp_stream.write(cmd.as_bytes());
+  fn login_cmd(&self, login: &str, password: &str) -> result::Result<OkResult, error::LoginError> {
+    self.send_cmd(format!("LOGIN {} {}", "todo", "todo"))
+  }
+
+  fn send_cmd(&mut self, cmd: &str) -> Result<???> {
+    let full_cmd = format!("{} {}", self.tag, cmd);
+    self.tcp_stream.write(full_cmd.as_bytes());
     unimplemented!()
+  }
+
+  fn generate_tag(&self) -> String {
+    format!("tag{}", (self.tag += 1).to_string())
   }
 
 
@@ -98,6 +144,8 @@ impl Connection {
   // pub fn uid_cmd()
   // pub fn check_cmd()
   // pub fn close_cmd()
+
+
 
 }
 

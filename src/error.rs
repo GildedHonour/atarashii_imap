@@ -23,10 +23,6 @@
 
 use std::error;
 use std::fmt;
-use std::result;
-
-pub type Result<T> = result::Result<T, error::Error>;
-
 
 #[derive(Debug)]
 pub struct AppendError;
@@ -79,3 +75,6 @@ pub struct UnableToRenameMailboxError;
 
 #[derive(Debug)]
 pub struct UnableToSubscribeToMailboxError;
+
+#[derive(Debug)]
+pub struct LoginError;
