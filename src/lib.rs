@@ -29,7 +29,7 @@ use std::result;
 
 mod error;
 
-pub struct OkResult {
+pub struct Ok {
   pub data: Option<Vec<String>>
 }
 
@@ -71,26 +71,31 @@ pub struct Connection {
 const CARRET_RETURN_CHAR: i32 = 0x0d;
 const LINE_RETURN_CHAR: i32 = 0x0a;
 const MIN_SUCCESSFUL_RESPONSE_LEN: i32 = 2;
+const TAG_PREFIX: &'static str = "TAG";
 
 impl Connection {
 
-  fn new() -> Connection {
-    Connection { tag: 1, port: 1, host: "todo" }
+  fn new(tcp_conn: TcpStream, host: &str, port: Option<u16>) -> Connection {
+    Connection { tag: 1, port: unwrap_or_else(|| ???), host: host }
+  }
+
+  pub fn full_tag(&self) -> String {
+    format!("{}_{}", Connection::TAG_PREFIX, self.tag)
   }
 
   pub fn open_plain(host: &str, login: &str, password: &str) -> Connection {
     match TcpStream::connect((host, TcpStreamSecurity::Plain.port())) {
       Ok(tcp_conn) => {
         let mut buf = Vec::new();
-        let conn = Connection::new();
+        let conn = Connection::new(tcp_conn, host: host);
         match tcp_conn.read_to_end(&mut buf) {
           Ok(bytes_read) => {
             //if OK exists then success
 
             //then login_cmd
             match conn.login_cmd(login, password) {
-              ResultOk(login_res) =>
-              LoginError(e) =>
+              Ok(login_res) => unimplemented!(),
+              error::LoginError(e) => unimplemented!()
             }
           },
 
@@ -110,18 +115,20 @@ impl Connection {
   
   }
 
-  fn login_cmd(&self, login: &str, password: &str) -> result::Result<OkResult, error::LoginError> {
-    self.send_cmd(format!("LOGIN {} {}", "todo", "todo"))
+  fn login_cmd(&self, login: &str, password: &str) -> result::Result<Ok, error::LoginError> {
+    self.send_cmd(format!("LOGIN {} {}", "todo", "todo"));
+    unimplemented!()
   }
 
-  fn send_cmd(&mut self, cmd: &str) -> Result<???> {
+  fn send_cmd(&mut self, cmd: &str) -> Result<error::GenericError, Vec<String>> {
     let full_cmd = format!("{} {}", self.tag, cmd);
     self.tcp_stream.write(full_cmd.as_bytes());
     unimplemented!()
   }
 
   fn generate_tag(&self) -> String {
-    format!("tag{}", (self.tag += 1).to_string())
+    self.tag += 1;
+    format!("tag{}", self.tag.to_string())
   }
 
 

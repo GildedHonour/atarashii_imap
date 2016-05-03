@@ -78,3 +78,6 @@ pub struct UnableToSubscribeToMailboxError;
 
 #[derive(Debug)]
 pub struct LoginError;
+
+#[derive(Debug)]
+pub struct GenericError;
