@@ -62,10 +62,16 @@ pub struct Mailbox {
 
 }
 
+enum TcpStreamEx {
+  Plain(TcpStream),
+  Ssl(SslStream<TcpStream>),
+  Tls(SslStream<TcpStream>)
+}
+
 pub struct Connection {
   host: String, 
   port: u16,
-  tcp_stream: TcpStream,
+  tcp_stream: TcpStreamEx,
   tag_sequence_number: u32
 }
 
@@ -74,7 +80,7 @@ impl Connection {
     "TAG" 
   }
 
-  fn new(tcps: TcpStream, host: &str, port: u16) -> Connection {
+  fn new(tcps: TcpStreamEx, host: &str, port: u16) -> Connection {
     Connection { port: port, host: host.to_string(), tcp_stream: tcps, tag_sequence_number: 1 }
   }
 
@@ -86,7 +92,7 @@ impl Connection {
     match TcpStream::connect((host, port)) {
       Ok(tcp_conn) => {
         let mut str_buf = String::new();
-        let mut conn = Connection::new(tcp_conn, host, port);
+        let mut conn = Connection::new(TcpStreamEx::Basic(tcp_conn), host, port);
         match conn.tcp_stream.read_to_string(&mut str_buf) {
           Ok(bytes_read) => {
             //if OK exists then success
@@ -115,7 +121,7 @@ impl Connection {
     match TcpStream::connect((host, port)) {
       Ok(tcp_conn) => {
         let stcp_conn = SslStream::connect(&sctx, tcp_conn).unwrap();
-        let mut conn = Connection::new(stcp_conn, host, port);
+        let mut conn = Connection::new(TcpStreamEx::Tls(stcp_conn), host, port);
         let mut str_buf = String::new();
         match conn.tcp_stream.read_to_string(&mut str_buf) {
           Ok(bytes_read) => {
