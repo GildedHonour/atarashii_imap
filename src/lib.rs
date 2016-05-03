@@ -18,6 +18,7 @@
  * https://github.com/GildedHonour/atarashii_imap
  *
  */
+
 extern crate openssl;
 extern crate regex;
 
@@ -65,7 +66,7 @@ pub struct Connection {
   host: String, 
   port: u16,
   tcp_stream: TcpStream,
-  tag: u32
+  tag_sequence_number: u32
 }
 
 impl Connection {
@@ -74,7 +75,7 @@ impl Connection {
   }
 
   fn new(tcps: TcpStream, host: &str, port: u16) -> Connection {
-    Connection { port: port, host: host.to_string(), tcp_stream: tcps, tag: 1 }
+    Connection { port: port, host: host.to_string(), tcp_stream: tcps, tag_sequence_number: 1 }
   }
 
   pub fn open_plain(host: &str, login: &str, password: &str) -> result::Result<Connection, error::ConnectError> {
@@ -84,12 +85,12 @@ impl Connection {
   pub fn open_plain2(host: &str, login: &str, password: &str, port: u16) -> result::Result<Connection, error::ConnectError> {
     match TcpStream::connect((host, port)) {
       Ok(tcp_conn) => {
-        let mut buf = Vec::new();
+        let mut str_buf = String::new();
         let mut conn = Connection::new(tcp_conn, host, port);
-        match conn.tcp_stream.read_to_end(&mut buf) {
+        match conn.tcp_stream.read_to_string(&mut str_buf) {
           Ok(bytes_read) => {
             //if OK exists then success
-
+            
             //then login_cmd
             match conn.login_cmd(login, password) {
               Ok(login_res) => unimplemented!(),
@@ -107,17 +108,36 @@ impl Connection {
   }
 
   pub fn open_secure(host: &str, sctx: SslContext, login: &str, password: &str) -> result::Result<Connection, error::ConnectError> {
-    let tcp_conn = match TcpStream::connect((host, TcpStreamSecurity::SslTls.port())) {
-      Ok(x) => x,
-      Err(e) => panic!("{}", "Unable to connect")
-    };
-
-    let ssocket = SslStream::connect(&sctx, tcp_conn);
-    unimplemented!()
+    Connection::open_secure2(host, sctx, login, password, TcpStreamSecurity::SslTls.port())
   }
 
+  pub fn open_secure2(host: &str, sctx: SslContext, login: &str, password: &str, port: u16) -> result::Result<Connection, error::ConnectError> {
+    match TcpStream::connect((host, port)) {
+      Ok(tcp_conn) => {
+        let stcp_conn = SslStream::connect(&sctx, tcp_conn).unwrap();
+        let mut conn = Connection::new(stcp_conn, host, port);
+        let mut str_buf = String::new();
+        match conn.tcp_stream.read_to_string(&mut str_buf) {
+          Ok(bytes_read) => {
+            //if OK exists then success
+            
+            //then login_cmd
+            match conn.login_cmd(login, password) {
+              Ok(login_res) => unimplemented!(),
+              Err(error::LoginError) => unimplemented!()
+            }
+          },
+
+          Err(e) => unimplemented!()          
+        }      
+      },
+      
+      Err(e) => panic!("{}", "Unable to connect")
+    }
+  }
+    
   fn login_cmd(&mut self, login: &str, password: &str) -> result::Result<ResponseOk, error::LoginError> {
-    match self.send_cmd(&format!("LOGIN {} {}", "todo", "todo")) {
+    match self.send_cmd(&format!("LOGIN {} {}", login, password)) {
       Ok(x) => {
         let mut str_buf = String::new();
         let res = self.tcp_stream.read_to_string(&mut str_buf);
@@ -128,18 +148,17 @@ impl Connection {
       },
 
       Err(e) => panic!("Error in login command: {}", e)
-    }
-    
+    }    
   }
 
   fn send_cmd(&mut self, cmd: &str) -> std::io::Result<usize> {
-    let full_cmd = format!("{} {}", self.tag, cmd);
+    let full_cmd = format!("{} {}", self.tag_sequence_number, cmd);
     self.tcp_stream.write(full_cmd.as_bytes())
   }
 
   fn generate_tag(&self) -> String {
-    // self.tag += 1;
-    format!("{}_{}", Connection::tag_prefix(), self.tag)
+    //self.tag_sequence_number += 1; todo
+    format!("{}_{}", Connection::tag_prefix(), self.tag_sequence_number)
   }
 
 
