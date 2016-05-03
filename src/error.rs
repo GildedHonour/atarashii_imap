@@ -24,6 +24,12 @@
 use std::error;
 use std::fmt;
 
+pub enum ResponseStatus {
+  Ok,
+  No,
+  Bad
+}
+
 #[derive(Debug)]
 pub struct AppendError;
 
@@ -81,3 +87,6 @@ pub struct LoginError;
 
 #[derive(Debug)]
 pub struct GenericError;
+
+#[derive(Debug)]
+pub struct ConnectError;

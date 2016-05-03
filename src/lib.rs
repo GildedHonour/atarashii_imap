@@ -29,7 +29,7 @@ use std::result;
 
 mod error;
 
-pub struct Ok {
+pub struct ResponseOk {
   pub data: Option<Vec<String>>
 }
 
@@ -68,34 +68,32 @@ pub struct Connection {
   tag: u32
 }
 
-const CARRET_RETURN_CHAR: i32 = 0x0d;
-const LINE_RETURN_CHAR: i32 = 0x0a;
-const MIN_SUCCESSFUL_RESPONSE_LEN: i32 = 2;
-const TAG_PREFIX: &'static str = "TAG";
-
 impl Connection {
-
-  fn new(tcp_conn: TcpStream, host: &str, port: Option<u16>) -> Connection {
-    Connection { tag: 1, port: unwrap_or_else(|| ???), host: host }
+  fn tag_prefix() -> &'static str { 
+    "TAG" 
   }
 
-  pub fn full_tag(&self) -> String {
-    format!("{}_{}", Connection::TAG_PREFIX, self.tag)
+  fn new(tcps: TcpStream, host: &str, port: u16) -> Connection {
+    Connection { port: port, host: host.to_string(), tcp_stream: tcps, tag: 1 }
   }
 
-  pub fn open_plain(host: &str, login: &str, password: &str) -> Connection {
-    match TcpStream::connect((host, TcpStreamSecurity::Plain.port())) {
+  pub fn open_plain(host: &str, login: &str, password: &str) -> result::Result<Connection, error::ConnectError> {
+    Connection::open_plain2(host, login, password, TcpStreamSecurity::Plain.port())
+  }
+  
+  pub fn open_plain2(host: &str, login: &str, password: &str, port: u16) -> result::Result<Connection, error::ConnectError> {
+    match TcpStream::connect((host, port)) {
       Ok(tcp_conn) => {
         let mut buf = Vec::new();
-        let conn = Connection::new(tcp_conn, host: host);
-        match tcp_conn.read_to_end(&mut buf) {
+        let mut conn = Connection::new(tcp_conn, host, port);
+        match conn.tcp_stream.read_to_end(&mut buf) {
           Ok(bytes_read) => {
             //if OK exists then success
 
             //then login_cmd
             match conn.login_cmd(login, password) {
               Ok(login_res) => unimplemented!(),
-              error::LoginError(e) => unimplemented!()
+              Err(error::LoginError) => unimplemented!()
             }
           },
 
@@ -108,27 +106,40 @@ impl Connection {
     }
   }
 
-  pub fn open_secure(host: &str, sctx: SslContext, login: &str, password: &str) -> () {
-    let tcp_conn = TcpStream::connect((host, TcpStreamSecurity::SslTls.port()));
+  pub fn open_secure(host: &str, sctx: SslContext, login: &str, password: &str) -> result::Result<Connection, error::ConnectError> {
+    let tcp_conn = match TcpStream::connect((host, TcpStreamSecurity::SslTls.port())) {
+      Ok(x) => x,
+      Err(e) => panic!("{}", "Unable to connect")
+    };
+
     let ssocket = SslStream::connect(&sctx, tcp_conn);
     unimplemented!()
-  
   }
 
-  fn login_cmd(&self, login: &str, password: &str) -> result::Result<Ok, error::LoginError> {
-    self.send_cmd(format!("LOGIN {} {}", "todo", "todo"));
-    unimplemented!()
+  fn login_cmd(&mut self, login: &str, password: &str) -> result::Result<ResponseOk, error::LoginError> {
+    match self.send_cmd(&format!("LOGIN {} {}", "todo", "todo")) {
+      Ok(x) => {
+        let mut str_buf = String::new();
+        let res = self.tcp_stream.read_to_string(&mut str_buf);
+        // pasrse the response, check if it's succ-l
+        // if "tag OK LOGIN completed"
+        // ResponseOk
+        unimplemented!()
+      },
+
+      Err(e) => panic!("Error in login command: {}", e)
+    }
+    
   }
 
-  fn send_cmd(&mut self, cmd: &str) -> Result<error::GenericError, Vec<String>> {
+  fn send_cmd(&mut self, cmd: &str) -> std::io::Result<usize> {
     let full_cmd = format!("{} {}", self.tag, cmd);
-    self.tcp_stream.write(full_cmd.as_bytes());
-    unimplemented!()
+    self.tcp_stream.write(full_cmd.as_bytes())
   }
 
   fn generate_tag(&self) -> String {
-    self.tag += 1;
-    format!("tag{}", self.tag.to_string())
+    // self.tag += 1;
+    format!("{}_{}", Connection::tag_prefix(), self.tag)
   }
 
 
