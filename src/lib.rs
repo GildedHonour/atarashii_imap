@@ -27,6 +27,7 @@ use std::net::TcpStream;
 use std::io::{Read, Write};
 use openssl::ssl::{SslContext, SslStream};
 use std::result;
+use std::cell::Cell;
 
 mod error;
 
@@ -71,8 +72,8 @@ enum TcpStreamEx {
 pub struct Connection {
   host: String, 
   port: u16,
-  tcp_stream: TcpStreamEx,
-  tag_sequence_number: u32
+  tcp_stream_ex: TcpStreamEx,
+  tag_sequence_number: Cell<u32>
 }
 
 impl Connection {
@@ -80,8 +81,11 @@ impl Connection {
     "TAG" 
   }
 
-  fn new(tcps: TcpStreamEx, host: &str, port: u16) -> Connection {
-    Connection { port: port, host: host.to_string(), tcp_stream: tcps, tag_sequence_number: 1 }
+  fn get_tcp_stream(&self) -> TcpStream {
+  }
+
+  fn new(tcps_ex: TcpStreamEx, host: &str, port: u16) -> Connection {
+    Connection { port: port, host: host.to_string(), tcp_stream_ex: tcps_ex, tag_sequence_number: Cell::new(1) }
   }
 
   pub fn open_plain(host: &str, login: &str, password: &str) -> result::Result<Connection, error::ConnectError> {
@@ -92,8 +96,8 @@ impl Connection {
     match TcpStream::connect((host, port)) {
       Ok(tcp_conn) => {
         let mut str_buf = String::new();
-        let mut conn = Connection::new(TcpStreamEx::Basic(tcp_conn), host, port);
-        match conn.tcp_stream.read_to_string(&mut str_buf) {
+        let mut conn = Connection::new(TcpStreamEx::Plain(tcp_conn), host, port);
+        match conn.get_tcp_stream().read_to_string(&mut str_buf) {
           Ok(bytes_read) => {
             //if OK exists then success
             
@@ -123,7 +127,7 @@ impl Connection {
         let stcp_conn = SslStream::connect(&sctx, tcp_conn).unwrap();
         let mut conn = Connection::new(TcpStreamEx::Tls(stcp_conn), host, port);
         let mut str_buf = String::new();
-        match conn.tcp_stream.read_to_string(&mut str_buf) {
+        match conn.get_tcp_stream().read_to_string(&mut str_buf) {
           Ok(bytes_read) => {
             //if OK exists then success
             
@@ -146,7 +150,7 @@ impl Connection {
     match self.send_cmd(&format!("LOGIN {} {}", login, password)) {
       Ok(x) => {
         let mut str_buf = String::new();
-        let res = self.tcp_stream.read_to_string(&mut str_buf);
+//        let res = self.get_tcp_stream().read_to_string(&mut str_buf);
         // pasrse the response, check if it's succ-l
         // if "tag OK LOGIN completed"
         // ResponseOk
@@ -158,12 +162,21 @@ impl Connection {
   }
 
   fn send_cmd(&mut self, cmd: &str) -> std::io::Result<usize> {
-    let full_cmd = format!("{} {}", self.tag_sequence_number, cmd);
-    self.tcp_stream.write(full_cmd.as_bytes())
+    let full_cmd = format!("{} {}", self.tag_sequence_number.get(), cmd);
+
+   //todo
+   let tcp_stream =  match self.tcp_stream_ex {
+      TcpStreamEx::Plain(x) => x,
+      TcpStreamEx::Ssl(x) => x,
+      TcpStreamEx::Tls(x) => x.get_ref()
+    };
+
+    tcp_stream.write(full_cmd.as_bytes())
   }
 
   fn generate_tag(&self) -> String {
-    //self.tag_sequence_number += 1; todo
+    let v = self.tag_sequence_number.get();
+    self.tag_sequence_number.set(v + 1);
     format!("{}_{}", Connection::tag_prefix(), self.tag_sequence_number)
   }
 
