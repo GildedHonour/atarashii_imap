@@ -30,63 +30,20 @@ pub enum ResponseStatus {
   Bad
 }
 
-#[derive(Debug)]
-pub struct AppendError;
-
-impl error::Error for AppendError {
-  fn description(&self) -> &str {
-    unimplemented!()
-  }
-
-  fn cause(&self) -> Option<&error::Error> {
-    unimplemented!()
-  }
+pub enum Error {
+  Append,
+  Search,
+  Fetch,
+  Store,
+  Copy,
+  UnknownCommandOrInvalidArgs,
+  NoSuchMailbox,
+  InvalidCredentials,
+  UnableToCreateMailbox,
+  UnableToDeleteMailbox,
+  UnableToRenameMailbox,
+  UnableToSubscribeToMailbox,
+  Login,
+  Generic,
+  Connect
 }
-
-impl fmt::Display for AppendError {
-  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "IO error: {}", "test")
-  }
-}
-
-#[derive(Debug)]
-pub struct SearchError;
-
-#[derive(Debug)]
-pub struct FetchError;
-
-#[derive(Debug)]
-pub struct StoreError;
-
-#[derive(Debug)]
-pub struct CopyError;
-
-#[derive(Debug)]
-pub struct UnknownCommandOrInvalidArgsError;
-
-#[derive(Debug)]
-pub struct NoSuchMailboxError;
-
-#[derive(Debug)]
-pub struct InvalidCredentialsError;
-
-#[derive(Debug)]
-pub struct UnableToCreateMailboxError;
-
-#[derive(Debug)]
-pub struct UnableToDeleteMailboxError;
-
-#[derive(Debug)]
-pub struct UnableToRenameMailboxError;
-
-#[derive(Debug)]
-pub struct UnableToSubscribeToMailboxError;
-
-#[derive(Debug)]
-pub struct LoginError;
-
-#[derive(Debug)]
-pub struct GenericError;
-
-#[derive(Debug)]
-pub struct ConnectError;
