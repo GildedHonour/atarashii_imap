@@ -25,7 +25,7 @@ extern crate regex;
 use regex::Regex;
 use std::net::TcpStream;
 use std::io::{Read, Write};
-use openssl::ssl::{SslContext, SslStream};
+use openssl::ssl;
 use std::result;
 use std::cell::Cell;
 
@@ -65,8 +65,10 @@ pub struct Mailbox {
 
 enum TcpStreamEx {
   Plain(TcpStream),
-  Ssl(SslStream<TcpStream>),
-  Tls(SslStream<TcpStream>)
+  
+  //todo
+  Ssl(ssl::SslStream<TcpStream>),
+  Tls(ssl::SslStream<TcpStream>)
 }
 
 pub struct Connection {
@@ -82,7 +84,7 @@ impl Connection {
   }
 
   fn get_tcp_stream(&self) -> TcpStream {
-  
+    unimplemented!()
   }
 
   fn new(tcps_ex: TcpStreamEx, host: &str, port: u16) -> Connection {
@@ -118,20 +120,20 @@ impl Connection {
     }
   }
 
-  pub fn open_secure(host: &str, sctx: SslContext, login: &str, password: &str) -> result::Result<Connection, error::Error> {
+  pub fn open_secure(host: &str, sctx: ssl::SslContext, login: &str, password: &str) -> result::Result<Connection, error::Error> {
     Connection::open_secure2(host, sctx, login, password, TcpStreamSecurity::SslTls.port())
   }
 
-  pub fn open_secure2(host: &str, sctx: SslContext, login: &str, password: &str, port: u16) -> result::Result<Connection, error::Error> {
+  pub fn open_secure2(host: &str, sctx: ssl::SslContext, login: &str, password: &str, port: u16) -> result::Result<Connection, error::Error> {
     match TcpStream::connect((host, port)) {
       Ok(tcp_conn) => {
-        let stcp_conn = SslStream::connect(&sctx, tcp_conn).unwrap();
+        let stcp_conn = ssl::SslStream::connect(&sctx, tcp_conn).unwrap();
         let mut conn = Connection::new(TcpStreamEx::Tls(stcp_conn), host, port);
         let mut str_buf = String::new();
         match conn.get_tcp_stream().read_to_string(&mut str_buf) {
           Ok(bytes_read) => {
             //if OK exists then success
-            
+          
             //then login_cmd
             match conn.login_cmd(login, password) {
               Ok(login_res) => unimplemented!(),
@@ -147,6 +149,7 @@ impl Connection {
     }
   }
     
+  
   fn login_cmd(&mut self, login: &str, password: &str) -> result::Result<ResponseOk, error::Error> {
     match self.send_cmd(&format!("LOGIN {} {}", login, password)) {
       Ok(x) => {
@@ -166,13 +169,7 @@ impl Connection {
     let full_cmd = format!("{} {}", self.tag_sequence_number.get(), cmd);
 
    //todo
-   let tcp_stream =  match self.tcp_stream_ex {
-      TcpStreamEx::Plain(x) => x,
-      TcpStreamEx::Ssl(x) => x,
-      TcpStreamEx::Tls(x) => x.get_ref()
-    };
-
-    tcp_stream.write(full_cmd.as_bytes())
+   unimplemented!()
   }
 
   fn generate_tag(&self) -> String {
@@ -201,9 +198,6 @@ impl Connection {
   // pub fn uid_cmd()
   // pub fn check_cmd()
   // pub fn close_cmd()
-
-
-
 }
 
 #[cfg(test)]
