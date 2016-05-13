@@ -97,14 +97,14 @@ impl Connection {
   
   pub fn open_plain2(host: &str, login: &str, password: &str, port: u16) -> result::Result<Connection, error::Error> {
     match TcpStream::connect((host, port)) {
-      Ok(tcp_conn) => {
+      Ok(mut tcp_conn) => {
         let mut str_buf = String::new();
-        let mut conn = Connection::new(TcpStreamEx::Plain(tcp_conn), host, port);
-        match conn.get_tcp_stream().read_to_string(&mut str_buf) {
+        match tcp_conn.read_to_string(&mut str_buf) {
           Ok(bytes_read) => {
-            //if OK exists then success
-            
-            //then login_cmd
+            //todo if OK exists then success
+            //read greating
+
+            let mut conn = Connection::new(TcpStreamEx::Plain(tcp_conn), host, port);
             match conn.login_cmd(login, password) {
               Ok(login_res) => unimplemented!(),
               Err(e) => unimplemented!()
@@ -127,21 +127,32 @@ impl Connection {
   pub fn open_secure2(host: &str, sctx: ssl::SslContext, login: &str, password: &str, port: u16) -> result::Result<Connection, error::Error> {
     match TcpStream::connect((host, port)) {
       Ok(tcp_conn) => {
-        let stcp_conn = ssl::SslStream::connect(&sctx, tcp_conn).unwrap();
-        let mut conn = Connection::new(TcpStreamEx::Tls(stcp_conn), host, port);
+        let mut stcp_conn = ssl::SslStream::connect(&sctx, tcp_conn).unwrap();
         let mut str_buf = String::new();
-        match conn.get_tcp_stream().read_to_string(&mut str_buf) {
-          Ok(bytes_read) => {
-            //if OK exists then success
-          
+        match stcp_conn.read_to_string(&mut str_buf) {
+          Ok(x) if x > 0 => {
+            println!("? I've read the greeting");
+
+            let greeting_re = Regex::new(r"^* OK").unwrap();
+            if !greeting_re.is_match(&str_buf) {
+              return Err(error::Error::Connect)
+            }
+            
+            let mut conn = Connection::new(TcpStreamEx::Tls(stcp_conn), host, port);
+            println!("OK I've read the greeting");
             //then login_cmd
             match conn.login_cmd(login, password) {
-              Ok(login_res) => unimplemented!(),
-              Err(e) => unimplemented!()
+              Ok(login_res) => {
+                let login_re = Regex::new(r"^* ?????").unwrap();
+                //todo check if OK, NO or BAD
+
+                Ok(conn)
+              },
+              Err(e) => Err(error::Error::Login)
             }
           },
 
-          Err(e) => unimplemented!()          
+          _ => Err(error::Error::Connect)
         }      
       },
       
