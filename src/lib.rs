@@ -78,6 +78,9 @@ pub struct Connection {
   tag_sequence_number: Cell<u32>
 }
 
+const CARRIAGE_RETURN_CODE: u8 = 0x0D;
+const NEW_LINE_CODE: u8 = 0x0A;
+
 impl Connection {
   fn tag_prefix() -> &'static str { 
     "TAG" 
@@ -129,31 +132,34 @@ impl Connection {
       Ok(tcp_conn) => {
         let mut stcp_conn = ssl::SslStream::connect(&sctx, tcp_conn).unwrap();
         let mut str_buf = String::new();
-        match stcp_conn.read_to_string(&mut str_buf) {
-          Ok(x) if x > 0 => {
-            println!("? I've read the greeting");
+        let byte_buf: &mut [u8] = &mut [0];
+        let mut greet_buf = Vec::new();
+        
+        while byte_buf[0] != CARRIAGE_RETURN_CODE && byte_buf[0] != NEW_LINE_CODE {
+          match stcp_conn.read(byte_buf) {
+            Ok(x) => greet_buf.push(byte_buf[0]),
+            Err(e) => println!("aaa") //todo
+          }
+        }
 
-            let greeting_re = Regex::new(r"^* OK").unwrap();
-            if !greeting_re.is_match(&str_buf) {
-              return Err(error::Error::Connect)
-            }
+        let greeting_re = Regex::new(r"^[*] OK").unwrap(); //todo
+        if !greeting_re.is_match(&str_buf) {
+            //todo 
+          println!("Error, the greeting doesn't match the string OK");           
+          return Err(error::Error::Connect)
+        }
             
-            let mut conn = Connection::new(TcpStreamEx::Tls(stcp_conn), host, port);
-            println!("OK I've read the greeting");
-            //then login_cmd
-            match conn.login_cmd(login, password) {
-              Ok(login_res) => {
-                let login_re = Regex::new(r"^* ?????").unwrap();
-                //todo check if OK, NO or BAD
+        let mut conn = Connection::new(TcpStreamEx::Tls(stcp_conn), host, port);
+        //then login_cmd
+        match conn.login_cmd(login, password) {
+          Ok(login_res) => {
+            let login_re = Regex::new(r"^* ?????").unwrap();
+            //todo check if OK, NO or BAD
 
-                Ok(conn)
-              },
-              Err(e) => Err(error::Error::Login)
-            }
+            Ok(conn)
           },
-
-          _ => Err(error::Error::Connect)
-        }      
+          Err(e) => Err(error::Error::Login)
+        }
       },
       
       Err(e) => panic!("{}", "Unable to connect")
@@ -205,7 +211,7 @@ impl Connection {
   // pub fn search_cmd()
   // pub fn fetch_cmd()
   // pub fn copy_cmd()
-  // pub fn store_cmd()
+  // Pub Fn store_cmd()
   // pub fn uid_cmd()
   // pub fn check_cmd()
   // pub fn close_cmd()
