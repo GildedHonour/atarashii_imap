@@ -142,10 +142,12 @@ impl Connection {
           }
         }
 
+        //* OK Gimap ready for requests from xxx.aaa.bbb.eee l7mb26996601obn
+
         let greeting_re = Regex::new(r"^[*] OK").unwrap(); //todo
-        if !greeting_re.is_match(&str_buf) {
+        if !greeting_re.is_match(&String::from_utf8(greet_buf).unwrap()) {
             //todo 
-          println!("Error, the greeting doesn't match the string OK");           
+          println!("Error, the greeting doesn't match the string OK");
           return Err(error::Error::Connect)
         }
             
