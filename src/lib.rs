@@ -115,7 +115,6 @@ impl Connection {
           },
 
           Err(e) => unimplemented!()
-          
         }
       },
 
@@ -131,7 +130,6 @@ impl Connection {
     match TcpStream::connect((host, port)) {
       Ok(tcp_conn) => {
         let mut stcp_conn = ssl::SslStream::connect(&sctx, tcp_conn).unwrap();
-        let mut str_buf = String::new();
         let byte_buf: &mut [u8] = &mut [0];
         let mut greet_buf = Vec::new();
         
@@ -143,7 +141,6 @@ impl Connection {
         }
 
         //* OK Gimap ready for requests from xxx.aaa.bbb.eee l7mb26996601obn
-
         let greeting_re = Regex::new(r"^[*] OK").unwrap(); //todo
         if !greeting_re.is_match(&String::from_utf8(greet_buf).unwrap()) {
             //todo 
@@ -170,25 +167,43 @@ impl Connection {
     
   
   fn login_cmd(&mut self, login: &str, password: &str) -> result::Result<ResponseOk, error::Error> {
-    match self.send_cmd(&format!("LOGIN {} {}", login, password)) {
-      Ok(x) => {
-        let mut str_buf = String::new();
-//        let res = self.get_tcp_stream().read_to_string(&mut str_buf);
+    match self.exec_cmd(&format!("LOGIN {} {}", login, password)) {
+      Ok(resp_data) => {
+
         // pasrse the response, check if it's succ-l
         // if "tag OK LOGIN completed"
         // ResponseOk
+//        Ok(ResponseOk { data: Vec::new() })
         unimplemented!()
       },
 
-      Err(e) => panic!("Error in login command: {}", e)
+      Err(e) => panic!("Error in login command")
     }    
   }
 
-  fn send_cmd(&mut self, cmd: &str) -> std::io::Result<usize> {
-    let full_cmd = format!("{} {}", self.tag_sequence_number.get(), cmd);
+  fn exec_cmd(&mut self, cmd: &str) -> Result<Vec<String>, error::Error> {
+    //todo refactor
+    let stcp_conn = match self.tcp_stream_ex {
+      TcpStreamEx::Tls(ref mut x) => x,
+      _ => panic!("Unable to deconstruct value")
+    };
+    
+    //todo
+    match write!(stcp_conn, "{} {}", self.tag_sequence_number.get(), cmd) {
+      Ok(_) => {
+        let byte_buf: &mut [u8] = &mut [0];
+        let mut read_buf = Vec::new();
+        while byte_buf[0] != CARRIAGE_RETURN_CODE && byte_buf[0] != NEW_LINE_CODE {
+          match stcp_conn.read(byte_buf) {
+            Ok(x) => read_buf.push(byte_buf[0]),
+            Err(e) => println!("aaa") //todo
+          }
+        }
 
-   //todo
-   unimplemented!()
+        Ok(vec![String::from_utf8(read_buf).unwrap()])
+      },
+      _ => Err(error::Error::SendCommand)
+    }
   }
 
   fn generate_tag(&self) -> String {

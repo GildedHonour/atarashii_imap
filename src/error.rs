@@ -45,5 +45,6 @@ pub enum Error {
   UnableToSubscribeToMailbox,
   Login,
   Generic,
-  Connect
+  Connect,
+  SendCommand
 }
