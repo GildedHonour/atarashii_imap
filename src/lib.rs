@@ -81,6 +81,7 @@ pub struct Connection {
 const CARRIAGE_RETURN_CODE: u8 = 0x0D;
 const NEW_LINE_CODE: u8 = 0x0A;
 const NEW_LINE_FULL_CODE: [u8; 2] = [CARRIAGE_RETURN_CODE, NEW_LINE_CODE];
+const NEW_LINE_FULL_CODE_LEN: usize = 2;
 
 impl Connection {
   fn tag_prefix() -> &'static str { 
@@ -137,7 +138,7 @@ impl Connection {
         //todo refactor
         //2 const
         loop {
-          if greet_buf.len() >= 2 && &greet_buf[greet_buf.len() - 2..] == &NEW_LINE_FULL_CODE[..] {
+          if greet_buf.len() >= NEW_LINE_FULL_CODE_LEN && &greet_buf[greet_buf.len() - NEW_LINE_FULL_CODE_LEN..] == &NEW_LINE_FULL_CODE[..] {
             break;
           }
 
@@ -179,6 +180,10 @@ impl Connection {
       Ok(resp_data) => {
 
         // pasrse the response, check if it's succ-l
+        let login_re = Regex::new(&format!("^[{}] [OK|NO|BAD]", self.get_current_tag())).unwrap(); //todo
+        //if !login_re.is_match(resp_data) {
+        
+
         // if "tag OK LOGIN completed"
         // ResponseOk
         //        Ok(ResponseOk { data: Vec::new() })
@@ -203,22 +208,20 @@ impl Connection {
         let byte_buf: &mut [u8] = &mut [0];
         let mut read_buf = Vec::new();
         loop {
+          //todo refactor
           if read_buf.len() >= NEW_LINE_FULL_CODE.len() && &read_buf[read_buf.len() - NEW_LINE_FULL_CODE.len()..] == &NEW_LINE_FULL_CODE[..] {
             break;
           }
 
           match stcp_conn.read(byte_buf) {
-            Ok(_) => {
-              println!("login cmd debug: {}", byte_buf[0]);
-              read_buf.push(byte_buf[0])
-            },
+            Ok(_) => read_buf.push(byte_buf[0]),
             Err(e) => println!("aaa") //todo
           }
         }
 
         //todo
         let resp = String::from_utf8(read_buf).unwrap();
-        println!("debug1: {}", resp);
+        println!("response is: {}", resp);
         
         Ok(resp)
       },
@@ -229,6 +232,11 @@ impl Connection {
   fn generate_tag(&self) -> String {
     let v = self.tag_sequence_number.get();
     self.tag_sequence_number.set(v + 1);
+    format!("{}_{}", Connection::tag_prefix(), self.tag_sequence_number.get())
+  }
+
+  fn get_current_tag(&self) -> String {
+    let v = self.tag_sequence_number.get();
     format!("{}_{}", Connection::tag_prefix(), self.tag_sequence_number.get())
   }
 
