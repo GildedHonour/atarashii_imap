@@ -80,6 +80,7 @@ pub struct Connection {
 
 const CARRIAGE_RETURN_CODE: u8 = 0x0D;
 const NEW_LINE_CODE: u8 = 0x0A;
+const NEW_LINE_FULL_CODE: [u8; 2] = [CARRIAGE_RETURN_CODE, NEW_LINE_CODE];
 
 impl Connection {
   fn tag_prefix() -> &'static str { 
@@ -132,22 +133,30 @@ impl Connection {
         let mut stcp_conn = ssl::SslStream::connect(&sctx, tcp_conn).unwrap();
         let byte_buf: &mut [u8] = &mut [0];
         let mut greet_buf = Vec::new();
-        
-        while byte_buf[0] != CARRIAGE_RETURN_CODE && byte_buf[0] != NEW_LINE_CODE {
+
+        //todo refactor
+        //2 const
+        loop {
+          if greet_buf.len() >= 2 && &greet_buf[greet_buf.len() - 2..] == &NEW_LINE_FULL_CODE[..] {
+            break;
+          }
+
           match stcp_conn.read(byte_buf) {
             Ok(x) => greet_buf.push(byte_buf[0]),
             Err(e) => println!("aaa") //todo
-          }
+          };
         }
 
-        //* OK Gimap ready for requests from xxx.aaa.bbb.eee l7mb26996601obn
         let greeting_re = Regex::new(r"^[*] OK").unwrap(); //todo
-        if !greeting_re.is_match(&String::from_utf8(greet_buf).unwrap()) {
+        let a1 = String::from_utf8(greet_buf).unwrap();
+        if !greeting_re.is_match(&a1) {
             //todo 
           println!("Error, the greeting doesn't match the string OK");
           return Err(error::Error::Connect)
+        } else {
+          println!("greeting response: {}", a1);
         }
-            
+        
         let mut conn = Connection::new(TcpStreamEx::Tls(stcp_conn), host, port);
         //then login_cmd
         match conn.login_cmd(login, password) {
@@ -164,8 +173,7 @@ impl Connection {
       Err(e) => panic!("{}", "Unable to connect")
     }
   }
-    
-  
+      
   fn login_cmd(&mut self, login: &str, password: &str) -> result::Result<ResponseOk, error::Error> {
     match self.exec_cmd(&format!("LOGIN {} {}", login, password)) {
       Ok(resp_data) => {
@@ -173,7 +181,7 @@ impl Connection {
         // pasrse the response, check if it's succ-l
         // if "tag OK LOGIN completed"
         // ResponseOk
-//        Ok(ResponseOk { data: Vec::new() })
+        //        Ok(ResponseOk { data: Vec::new() })
         unimplemented!()
       },
 
@@ -181,26 +189,38 @@ impl Connection {
     }    
   }
 
-  fn exec_cmd(&mut self, cmd: &str) -> Result<Vec<String>, error::Error> {
+  fn exec_cmd(&mut self, cmd: &str) -> Result<String, error::Error> {
+    let tag = self.generate_tag();
+
     //todo refactor
     let stcp_conn = match self.tcp_stream_ex {
       TcpStreamEx::Tls(ref mut x) => x,
       _ => panic!("Unable to deconstruct value")
     };
     
-    //todo
-    match write!(stcp_conn, "{} {}", self.tag_sequence_number.get(), cmd) {
-      Ok(_) => {
+    match stcp_conn.write(format!("{} {}\r\n", tag, cmd).as_bytes()) {
+      Ok(x) => {
         let byte_buf: &mut [u8] = &mut [0];
         let mut read_buf = Vec::new();
-        while byte_buf[0] != CARRIAGE_RETURN_CODE && byte_buf[0] != NEW_LINE_CODE {
+        loop {
+          if read_buf.len() >= NEW_LINE_FULL_CODE.len() && &read_buf[read_buf.len() - NEW_LINE_FULL_CODE.len()..] == &NEW_LINE_FULL_CODE[..] {
+            break;
+          }
+
           match stcp_conn.read(byte_buf) {
-            Ok(x) => read_buf.push(byte_buf[0]),
+            Ok(_) => {
+              println!("login cmd debug: {}", byte_buf[0]);
+              read_buf.push(byte_buf[0])
+            },
             Err(e) => println!("aaa") //todo
           }
         }
 
-        Ok(vec![String::from_utf8(read_buf).unwrap()])
+        //todo
+        let resp = String::from_utf8(read_buf).unwrap();
+        println!("debug1: {}", resp);
+        
+        Ok(resp)
       },
       _ => Err(error::Error::SendCommand)
     }
