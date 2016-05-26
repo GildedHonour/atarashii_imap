@@ -1,3 +1,4 @@
-target
-Cargo.lock
-1.txt
+/target
+/Cargo.lock
+/1.txt
+/my_docs

@@ -164,6 +164,9 @@ impl Connection {
           Ok(login_res) => {
             let login_re = Regex::new(r"^* ?????").unwrap();
             //todo check if OK, NO or BAD
+            // * OK Welcome
+            // TAG_2 NO [AUTHENTICATIONFAILED] Authentication failed
+            // * NO [WEBALERT https://accounts.google .... Web login required. 
 
             Ok(conn)
           },
@@ -182,11 +185,6 @@ impl Connection {
         // pasrse the response, check if it's succ-l
         let login_re = Regex::new(&format!("^[{}] [OK|NO|BAD]", self.get_current_tag())).unwrap(); //todo
         //if !login_re.is_match(resp_data) {
-        
-
-        // if "tag OK LOGIN completed"
-        // ResponseOk
-        //        Ok(ResponseOk { data: Vec::new() })
         unimplemented!()
       },
 
@@ -206,11 +204,20 @@ impl Connection {
     match stcp_conn.write(format!("{} {}\r\n", tag, cmd).as_bytes()) {
       Ok(x) => {
         let byte_buf: &mut [u8] = &mut [0];
-        let mut read_buf = Vec::new();
+        let mut read_buf: Vec<u8> = Vec::new();
+        let regex_str = format!(r"{}\s(OK\b|NO\b|BAD\b)", tag);
+        let cmd_resp_re = Regex::new(&regex_str).unwrap();
         loop {
+          let ch1 = String::from_utf8(vec![byte_buf[0]]).unwrap();
+          println!("exec_cmd read char: {}", ch1);
           //todo refactor
           if read_buf.len() >= NEW_LINE_FULL_CODE.len() && &read_buf[read_buf.len() - NEW_LINE_FULL_CODE.len()..] == &NEW_LINE_FULL_CODE[..] {
-            break;
+            //todo
+            let m1 = String::from_utf8(read_buf.clone()).unwrap();
+            if cmd_resp_re.is_match(&m1) {
+              println!("matched cmd_resp_re.is_match: {}", m1);
+              break;
+            }
           }
 
           match stcp_conn.read(byte_buf) {
@@ -221,8 +228,7 @@ impl Connection {
 
         //todo
         let resp = String::from_utf8(read_buf).unwrap();
-        println!("response is: {}", resp);
-        
+        println!("login resp: {}", resp);
         Ok(resp)
       },
       _ => Err(error::Error::SendCommand)
