@@ -24,12 +24,6 @@
 use std::error;
 use std::fmt;
 
-pub enum ResponseStatus {
-  Ok,
-  No,
-  Bad
-}
-
 pub enum Error {
   Append,
   Search,

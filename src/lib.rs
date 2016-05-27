@@ -31,8 +31,10 @@ use std::cell::Cell;
 
 mod error;
 
-pub struct ResponseOk {
-  pub data: Option<Vec<String>>
+pub enum ResponseStatus {
+  Ok(Option<Vec<String>>),
+  No(Option<Vec<String>>),
+  Bad(Option<Vec<String>>)
 }
 
 pub enum TcpStreamSecurity {
@@ -180,11 +182,9 @@ impl Connection {
       
   fn login_cmd(&mut self, login: &str, password: &str) -> result::Result<ResponseOk, error::Error> {
     match self.exec_cmd(&format!("LOGIN {} {}", login, password)) {
-      Ok(resp_data) => {
-
-        // pasrse the response, check if it's succ-l
-        let login_re = Regex::new(&format!("^[{}] [OK|NO|BAD]", self.get_current_tag())).unwrap(); //todo
-        //if !login_re.is_match(resp_data) {
+      Ok(ResponseStatus::Ok) => {
+        println!("login successfull");
+//        Ok(ResponseStatus::Ok)
         unimplemented!()
       },
 
@@ -192,7 +192,7 @@ impl Connection {
     }    
   }
 
-  fn exec_cmd(&mut self, cmd: &str) -> Result<error::ResponseStatus, error::Error> {
+  fn exec_cmd(&mut self, cmd: &str) -> Result<ResponseStatus, error::Error> {
     let tag = self.generate_tag();
 
     //todo refactor
@@ -226,9 +226,9 @@ impl Connection {
         let resp = String::from_utf8(read_buf.clone()).unwrap();
         let caps = cmd_resp_re.captures(&resp).unwrap();
         let res = match caps.at(1) {
-          Some("OK") => error::ResponseStatus::Ok,
-          Some("NO") => error::ResponseStatus::No,
-          Some("BAD") => error::ResponseStatus::Bad,
+          Some("OK") => ResponseStatus::Ok,
+          Some("NO") => ResponseStatus::No,
+          Some("BAD") => ResponseStatus::Bad,
           _ => panic!("Invalid response")
         };
           
