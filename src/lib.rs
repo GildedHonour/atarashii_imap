@@ -192,7 +192,7 @@ impl Connection {
     }    
   }
 
-  fn exec_cmd(&mut self, cmd: &str) -> Result<String, error::Error> {
+  fn exec_cmd(&mut self, cmd: &str) -> Result<error::ResponseStatus, error::Error> {
     let tag = self.generate_tag();
 
     //todo refactor
@@ -205,17 +205,13 @@ impl Connection {
       Ok(x) => {
         let byte_buf: &mut [u8] = &mut [0];
         let mut read_buf: Vec<u8> = Vec::new();
-        let regex_str = format!(r"{}\s(OK\b|NO\b|BAD\b)", tag);
+        let regex_str = format!(r"{}\s(OK|NO|BAD){{1}}", tag);  //  let regex_str = format!(r"{}\s(OK\b|NO\b|BAD\b)", tag);
         let cmd_resp_re = Regex::new(&regex_str).unwrap();
         loop {
-          let ch1 = String::from_utf8(vec![byte_buf[0]]).unwrap();
-          println!("exec_cmd read char: {}", ch1);
-          //todo refactor
           if read_buf.len() >= NEW_LINE_FULL_CODE.len() && &read_buf[read_buf.len() - NEW_LINE_FULL_CODE.len()..] == &NEW_LINE_FULL_CODE[..] {
             //todo
             let m1 = String::from_utf8(read_buf.clone()).unwrap();
             if cmd_resp_re.is_match(&m1) {
-              println!("matched cmd_resp_re.is_match: {}", m1);
               break;
             }
           }
@@ -226,10 +222,18 @@ impl Connection {
           }
         }
 
-        //todo
-        let resp = String::from_utf8(read_buf).unwrap();
-        println!("login resp: {}", resp);
-        Ok(resp)
+        //todo refactor
+        let resp = String::from_utf8(read_buf.clone()).unwrap();
+        let caps = cmd_resp_re.captures(&resp).unwrap();
+        let res = match caps.at(1) {
+          Some("OK") => error::ResponseStatus::Ok,
+          Some("NO") => error::ResponseStatus::No,
+          Some("BAD") => error::ResponseStatus::Bad,
+          _ => panic!("Invalid response")
+        };
+          
+        println!("[DEBUG] exec cmd res: {}", caps.at(1).unwrap());
+        Ok(res)
       },
       _ => Err(error::Error::SendCommand)
     }
