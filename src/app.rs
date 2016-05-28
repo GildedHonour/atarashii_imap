@@ -28,6 +28,7 @@ use openssl::ssl::SslMethod::Sslv23;
 
 fn main() {
   let sctx = SslContext::new(Sslv23);
-  let conn = Connection::open_secure("imap.gmail.com", SslContext::new(Sslv23).unwrap(), "kamil.karavaski@gmail.com", "L4ciYbVRMZYd5BECr");
+  let conn = Connection::open_secure("imap.gmail.com", SslContext::new(Sslv23).unwrap(), "gildedhonour@gmail.com", "pthgwemnqgvqmgxa");
+//  let conn = Connection::open_secure("imap.mail.ru", SslContext::new(Sslv23).unwrap(), "DqLvvvZHMzrsV2sQDzS757XDa8@mail.ru", "pC7BKWSWg9t5zVKWFRGsy8pEhf");
   println!("hellllloo123");
 }

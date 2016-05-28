@@ -164,12 +164,7 @@ impl Connection {
         //then login_cmd
         match conn.login_cmd(login, password) {
           Ok(login_res) => {
-            let login_re = Regex::new(r"^* ?????").unwrap();
-            //todo check if OK, NO or BAD
-            // * OK Welcome
-            // TAG_2 NO [AUTHENTICATIONFAILED] Authentication failed
-            // * NO [WEBALERT https://accounts.google .... Web login required. 
-
+            println!("Login OK");
             Ok(conn)
           },
           Err(e) => Err(error::Error::Login)
@@ -180,16 +175,8 @@ impl Connection {
     }
   }
       
-  fn login_cmd(&mut self, login: &str, password: &str) -> result::Result<ResponseOk, error::Error> {
-    match self.exec_cmd(&format!("LOGIN {} {}", login, password)) {
-      Ok(ResponseStatus::Ok) => {
-        println!("login successfull");
-//        Ok(ResponseStatus::Ok)
-        unimplemented!()
-      },
-
-      Err(e) => panic!("Error in login command")
-    }    
+  fn login_cmd(&mut self, login: &str, password: &str) -> result::Result<ResponseStatus, error::Error> {
+    self.exec_cmd(&format!("LOGIN {} {}", login, password))
   }
 
   fn exec_cmd(&mut self, cmd: &str) -> Result<ResponseStatus, error::Error> {
@@ -226,9 +213,9 @@ impl Connection {
         let resp = String::from_utf8(read_buf.clone()).unwrap();
         let caps = cmd_resp_re.captures(&resp).unwrap();
         let res = match caps.at(1) {
-          Some("OK") => ResponseStatus::Ok,
-          Some("NO") => ResponseStatus::No,
-          Some("BAD") => ResponseStatus::Bad,
+          Some("OK") => ResponseStatus::Ok(None),
+          Some("NO") => ResponseStatus::No(None),
+          Some("BAD") => ResponseStatus::Bad(None),
           _ => panic!("Invalid response")
         };
           
