@@ -27,8 +27,12 @@ use openssl::ssl::{SslContext, SslStream};
 use openssl::ssl::SslMethod::Sslv23;
 
 fn main() {
-  let sctx = SslContext::new(Sslv23);
-  let conn = Connection::open_secure("imap.gmail.com", SslContext::new(Sslv23).unwrap(), "gildedhonour@gmail.com", "pthgwemnqgvqmgxa");
+  match Connection::open_secure("imap.gmail.com", SslContext::new(Sslv23).unwrap(), "gildedhonour@gmail.com", "pthgwemnqgvqmgxa") {
+    Ok(conn) => {
+      let select_res = conn.select_cmd("inbox".to_string());
+    },
+    Err(e) => panic!("Unable open connection")
+  }
+
 //  let conn = Connection::open_secure("imap.mail.ru", SslContext::new(Sslv23).unwrap(), "DqLvvvZHMzrsV2sQDzS757XDa8@mail.ru", "pC7BKWSWg9t5zVKWFRGsy8pEhf");
-  println!("hellllloo123");
 }

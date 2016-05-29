@@ -237,9 +237,11 @@ impl Connection {
     format!("{}_{}", Connection::tag_prefix(), self.tag_sequence_number.get())
   }
 
-
-  // pub fn select_cmd()
-  // pub fn examine_cmd()
+  pub fn select_cmd(&self, mailbox_name: String) -> Result<ResponseStatus, error::Error> {
+    unimplemented!()
+  }
+  
+// pub fn examine_cmd()
   // pub fn create_cmd()
   // pub fn delete_cmd()
   // pub fn rename_cmd()
@@ -257,6 +259,16 @@ impl Connection {
   // pub fn uid_cmd()
   // pub fn check_cmd()
   // pub fn close_cmd()
+}
+
+pub struct SelectCmdResponse {
+  flags: Option<Vec<String>>, //todo
+  exists_num: u32,
+  recent_num: u32,
+  unseen_num: u32,
+  permanent_flags: Option<Vec<String>>, //todo
+  uid_next: u32,
+  uid_validity: u32
 }
 
 #[cfg(test)]

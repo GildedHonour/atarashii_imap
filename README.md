@@ -9,20 +9,18 @@ It's under development...
 
 ### Example
 ```rust
-match Connection::open_secure("imap.gmail.com", "login", "password") {
-  ResultOk(conn) => {
-    let items = conn.list_cmd();
-    //......
+match Connection::open_secure("imap.gmail.com", SslContext::new(Sslv23).unwrap(), "gmail_login@gmail.com", "password") {
+  Ok(conn) => {
+    let select_res = conn.select_cmd("inbox".to_string());
   },
-
-  Err(e) => 
+  Err(e) => panic!("Unable open connection")
 }
 
 ```
 
 
 ## Author
-Alex Maslakov
+Alex Maslakov | me@gildedhonour.com
 
 ## License
 Apache 2.0
