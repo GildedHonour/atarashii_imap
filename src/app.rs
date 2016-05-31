@@ -28,8 +28,8 @@ use openssl::ssl::SslMethod::Sslv23;
 
 fn main() {
   match Connection::open_secure("imap.gmail.com", SslContext::new(Sslv23).unwrap(), "gildedhonour@gmail.com", "pthgwemnqgvqmgxa") {
-    Ok(conn) => {
-      let select_res = conn.select_cmd("inbox".to_string());
+    Ok(mut conn) => {
+      let select_res = conn.select_cmd("INBOX".to_string());
     },
     Err(e) => panic!("Unable open connection")
   }

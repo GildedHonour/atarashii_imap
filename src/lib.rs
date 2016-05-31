@@ -179,6 +179,29 @@ impl Connection {
     self.exec_cmd(&format!("LOGIN {} {}", login, password))
   }
 
+  //todo
+  pub fn select_cmd(&mut self, mailbox_name: String) -> Result<ResponseStatus, error::Error> {
+    match self.exec_cmd(&format!("SELECT {}", mailbox_name)) {
+      Ok(ResponseStatus::Ok(data)) => {
+        for x in data.iter() {
+          println!("select ok resp item: {:?}", x);
+        }
+
+        unimplemented!()
+      },
+      Ok(ResponseStatus::No(data)) => unimplemented!(),
+      Ok(ResponseStatus::Bad(data)) => {
+        for x in data.iter() {
+          println!("select bad resp item: {:?}", x);
+        }
+
+        unimplemented!()
+      },
+      Err(e) => panic!("select cmd error123")
+    }
+
+  }
+
   fn exec_cmd(&mut self, cmd: &str) -> Result<ResponseStatus, error::Error> {
     let tag = self.generate_tag();
 
@@ -212,15 +235,14 @@ impl Connection {
         //todo refactor
         let resp = String::from_utf8(read_buf.clone()).unwrap();
         let caps = cmd_resp_re.captures(&resp).unwrap();
-        let res = match caps.at(1) {
-          Some("OK") => ResponseStatus::Ok(None),
-          Some("NO") => ResponseStatus::No(None),
-          Some("BAD") => ResponseStatus::Bad(None),
+        let data = Some(resp.split("\r\n").map(|x| x.to_string()).collect());
+        println!("[DEBUG] exec cmd res: {}", caps.at(1).unwrap());//todo remove
+        Ok(match caps.at(1) {
+          Some("OK") => ResponseStatus::Ok(data),
+          Some("NO") => ResponseStatus::No(data),
+          Some("BAD") => ResponseStatus::Bad(data),
           _ => panic!("Invalid response")
-        };
-          
-        println!("[DEBUG] exec cmd res: {}", caps.at(1).unwrap());
-        Ok(res)
+        })
       },
       _ => Err(error::Error::SendCommand)
     }
@@ -235,10 +257,6 @@ impl Connection {
   fn get_current_tag(&self) -> String {
     let v = self.tag_sequence_number.get();
     format!("{}_{}", Connection::tag_prefix(), self.tag_sequence_number.get())
-  }
-
-  pub fn select_cmd(&self, mailbox_name: String) -> Result<ResponseStatus, error::Error> {
-    unimplemented!()
   }
   
 // pub fn examine_cmd()
