@@ -31,6 +31,7 @@ use std::cell::Cell;
 
 mod error;
 
+//todo remove Option
 pub enum ResponseStatus {
   Ok(Option<Vec<String>>),
   No(Option<Vec<String>>),
@@ -180,7 +181,7 @@ impl Connection {
   }
 
   //todo
-  pub fn select_cmd(&mut self, mailbox_name: String) -> Result<ResponseStatus, error::Error> {
+  pub fn select_cmd(&mut self, mailbox_name: String) -> Result<SelectCmdResponse, error::Error> {
     match self.exec_cmd(&format!("SELECT {}", mailbox_name)) {
       Ok(ResponseStatus::Ok(Some(data))) => {
 
@@ -194,13 +195,17 @@ impl Connection {
         "* OK [HIGHESTMODSEQ 1838882]"
         "TAG_3 OK [READ-WRITE] INBOX selected. (Success)"
         */
-
+  
         //todo
         let re_flags = Regex::new(r"FLAGS\s\(.+\)").unwrap();
+        let re_repm_flags = Regex::new(r"\[PERMANENTFLAGS\s\(.+\)\]").unwrap();
+        let re_uid_validity = Regex::new(r"\[UIDVALIDITY\s(\d+)\]").unwrap();
         let re_exists_num = Regex::new(r"(\d+)\sEXISTS").unwrap();
         let re_recent_num = Regex::new(r"(\d+)\sRECENT").unwrap();
-
+        let re_uid_next = Regex::new(r"\[UIDNEXT\s(\d+)\]").unwrap();
+        let re_tag_and_res = Regex::new(&format!(r"{}\s(OK|NO|BAD){{1}}", self.get_current_tag())).unwrap();
         let mut scr = SelectCmdResponse::default();
+
         for x in data.iter() {
           if re_flags.is_match(&x) {
             //          scr.flags = Some(...);
@@ -217,9 +222,13 @@ impl Connection {
             scr.recent_num = cp.at(1).unwrap().parse::<u32>().unwrap();
           }
 
+          if re_uid_validity.is_match(&x) {
+            let cp = re_uid_validity.captures(&x).unwrap();
+            scr.uid_validity = cp.at(1).unwrap().parse::<u32>().unwrap();
+          }
         }
 
-        unimplemented!()
+        Ok(scr)
       },
       _ => unimplemented!(),
 /*
@@ -326,13 +335,13 @@ impl Connection {
 }
 
 pub struct SelectCmdResponse {
-  flags: Option<Vec<String>>, //todo
-  exists_num: u32,
-  recent_num: u32,
-  unseen_num: u32,
-  permanent_flags: Option<Vec<String>>, //todo
-  uid_next: u32,
-  uid_validity: u32
+  pub flags: Option<Vec<String>>, //todo
+  pub permanent_flags: Option<Vec<String>>, //todo
+  pub exists_num: u32,
+  pub recent_num: u32,
+  pub unseen_num: u32,
+  pub uid_next: u32,
+  pub uid_validity: u32
 }
 
 impl Default for SelectCmdResponse {
