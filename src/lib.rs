@@ -182,13 +182,47 @@ impl Connection {
   //todo
   pub fn select_cmd(&mut self, mailbox_name: String) -> Result<ResponseStatus, error::Error> {
     match self.exec_cmd(&format!("SELECT {}", mailbox_name)) {
-      Ok(ResponseStatus::Ok(data)) => {
+      Ok(ResponseStatus::Ok(Some(data))) => {
+
+        /*
+        "* FLAGS (\Answered \Flagge \Draft \Deleted \Seen $Junk $NotJunk $NotPhishing $Phishing Junk NonJunk NotJunk)"
+        "* OK [PERMANENTFLAGS (\Answered \Flagged \Draft \Deleted \Seen $Junk $NotJunk $NotPhishing $Phishing Junk NonJunk NotJunk \\*)] Flags permitted."
+        "* OK [UIDVALIDITY 643039027] UIDs valid."
+        "* 3883 EXISTS"
+        "* 0 RECENT"
+        "* OK [UIDNEXT 10854] Predicted next UID."
+        "* OK [HIGHESTMODSEQ 1838882]"
+        "TAG_3 OK [READ-WRITE] INBOX selected. (Success)"
+        */
+
+        //todo
+        let re_flags = Regex::new(r"FLAGS\s\(.+\)").unwrap();
+        let re_exists_num = Regex::new(r"(\d+)\sEXISTS").unwrap();
+        let re_recent_num = Regex::new(r"(\d+)\sRECENT").unwrap();
+
+        let mut scr = SelectCmdResponse::default();
         for x in data.iter() {
-          println!("select ok resp item: {:?}", x);
+          if re_flags.is_match(&x) {
+            //          scr.flags = Some(...);
+            //          let caps = cmd_resp_re.captures(&resp).unwrap();
+          }
+
+          if re_exists_num.is_match(&x) {
+            let cp = re_exists_num.captures(&x).unwrap();
+            scr.exists_num = cp.at(1).unwrap().parse::<u32>().unwrap();
+          }
+
+          if re_recent_num.is_match(&x) {
+            let cp = re_recent_num.captures(&x).unwrap();
+            scr.recent_num = cp.at(1).unwrap().parse::<u32>().unwrap();
+          }
+
         }
 
         unimplemented!()
       },
+      _ => unimplemented!(),
+/*
       Ok(ResponseStatus::No(data)) => unimplemented!(),
       Ok(ResponseStatus::Bad(data)) => {
         for x in data.iter() {
@@ -198,8 +232,20 @@ impl Connection {
         unimplemented!()
       },
       Err(e) => panic!("select cmd error123")
+
+*/
     }
 
+  }
+
+  //todo
+  pub fn examine_cmd(&mut self, mailbox_name: String) -> Result<ResponseStatus, error::Error> {
+    match self.exec_cmd(&format!("EXAMINE {}", mailbox_name)) {
+      Ok(ResponseStatus::Ok(Some(data))) => {
+        unimplemented!()
+      },
+      _ => unimplemented!(),
+    }
   }
 
   fn exec_cmd(&mut self, cmd: &str) -> Result<ResponseStatus, error::Error> {
@@ -287,6 +333,20 @@ pub struct SelectCmdResponse {
   permanent_flags: Option<Vec<String>>, //todo
   uid_next: u32,
   uid_validity: u32
+}
+
+impl Default for SelectCmdResponse {
+  fn default() -> SelectCmdResponse {
+    SelectCmdResponse { 
+      flags: None,
+      exists_num: 0,
+      recent_num: 0,
+      unseen_num: 0,
+      permanent_flags: None,
+      uid_next: 0,
+      uid_validity: 0
+    }
+  }
 }
 
 #[cfg(test)]
