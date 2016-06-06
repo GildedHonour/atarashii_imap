@@ -197,7 +197,7 @@ impl Connection {
         */
   
         //todo
-        let re_flags = Regex::new(r"FLAGS\s\(.+\)").unwrap();
+        let re_flags = Regex::new(r"FLAGS\s\((.+)\)").unwrap();
         let re_repm_flags = Regex::new(r"\[PERMANENTFLAGS\s\(.+\)\]").unwrap();
         let re_uid_validity = Regex::new(r"\[UIDVALIDITY\s(\d+)\]").unwrap();
         let re_exists_num = Regex::new(r"(\d+)\sEXISTS").unwrap();
@@ -208,8 +208,14 @@ impl Connection {
 
         for x in data.iter() {
           if re_flags.is_match(&x) {
-            //          scr.flags = Some(...);
-            //          let caps = cmd_resp_re.captures(&resp).unwrap();
+            let cp = re_flags.captures(&x).unwrap();
+            let flg1 = cp.at(1).unwrap().to_string();
+
+            println!("[DEBUG] flags: {}", flg1);
+
+            let flg2: Vec<&str> = flg1.split(" ").collect();
+            let flg3 = flg2.iter().map(|x| x.to_string()).collect();
+            scr.flags = flg3;
           }
 
           if re_exists_num.is_match(&x) {
@@ -310,7 +316,6 @@ impl Connection {
   }
 
   fn get_current_tag(&self) -> String {
-    let v = self.tag_sequence_number.get();
     format!("{}_{}", Connection::tag_prefix(), self.tag_sequence_number.get())
   }
   
@@ -335,8 +340,8 @@ impl Connection {
 }
 
 pub struct SelectCmdResponse {
-  pub flags: Option<Vec<String>>, //todo
-  pub permanent_flags: Option<Vec<String>>, //todo
+  pub flags: Vec<String>,
+  pub permanent_flags: Vec<String>,
   pub exists_num: u32,
   pub recent_num: u32,
   pub unseen_num: u32,
@@ -347,11 +352,11 @@ pub struct SelectCmdResponse {
 impl Default for SelectCmdResponse {
   fn default() -> SelectCmdResponse {
     SelectCmdResponse { 
-      flags: None,
+      flags: vec![],
+      permanent_flags: vec![],
       exists_num: 0,
       recent_num: 0,
       unseen_num: 0,
-      permanent_flags: None,
       uid_next: 0,
       uid_validity: 0
     }
