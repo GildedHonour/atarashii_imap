@@ -9,21 +9,26 @@ It's under development...
 
 ### Example
 ```rust
+extern crate atarashii_imap;
+extern crate openssl;
+
+use atarashii_imap::{Connection};
+use openssl::ssl::{SslContext, SslStream};
+use openssl::ssl::SslMethod::Sslv23;
+
+//.......
+
 match Connection::open_secure("imap.gmail.com", SslContext::new(Sslv23).unwrap(), "gmail_login@gmail.com", "password") {
-    Ok(mut conn) => {
-      match conn.select_cmd("INBOX".to_string()) {
-        Ok(sel_res) => {
-          println!("select cmd result: \r\n inbox {}\r\n recent: {}\r\n uid validity {}\r\n flags {}\r\n",
-                   sel_res.exists_num, 
-                   sel_res.recent_num, 
-                   sel_res.uid_validity,
-                   sel_res.flags.join(", "));
-        },
-        Err(e) => println!("error")
-      }
-      
-    },
-    Err(e) => panic!("Unable open connection")
+  Ok(mut conn) => {
+    match conn.select_cmd("INBOX".to_string()) {
+      Ok(sel_res) => {
+        println!("select cmd result: {}", sel_res);
+      },
+      Err(e) => println!("error")
+    }
+    
+  },
+  Err(e) => panic!("Unable open connection")
 }
 
 ```
