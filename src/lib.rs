@@ -28,6 +28,7 @@ use std::io::{Read, Write};
 use openssl::ssl;
 use std::result;
 use std::cell::Cell;
+use std::fmt;
 
 mod error;
 
@@ -72,6 +73,43 @@ enum TcpStreamEx {
   //todo
   Ssl(ssl::SslStream<TcpStream>),
   Tls(ssl::SslStream<TcpStream>)
+}
+
+pub struct SelectCmdResponse {
+  pub flags: Vec<String>,
+  pub permanent_flags: Vec<String>,
+  pub exists_num: u32,
+  pub recent_num: u32,
+  pub unseen_num: u32,
+  pub uid_next: u32,
+  pub uid_validity: u32
+}
+
+impl Default for SelectCmdResponse {
+  fn default() -> SelectCmdResponse {
+    SelectCmdResponse { 
+      flags: vec![],
+      permanent_flags: vec![],
+      exists_num: 0,
+      recent_num: 0,
+      unseen_num: 0,
+      uid_next: 0,
+      uid_validity: 0
+    }
+  }
+}
+
+impl fmt::Display for SelectCmdResponse {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "exists: {}\r\n recent: {}\r\n unseen: {}\r\n uid validity: {}\r\n uid next: {}\r\n flags: {}\r\n perm flags: {}",
+           self.exists_num, 
+           self.recent_num,
+           self.unseen_num,
+           self.uid_validity,
+           self.uid_next,
+           self.flags.join(", "),
+           self.permanent_flags.join(", "))
+  }
 }
 
 pub struct Connection {
@@ -353,30 +391,6 @@ impl Connection {
   // pub fn uid_cmd()
   // pub fn check_cmd()
   // pub fn close_cmd()
-}
-
-pub struct SelectCmdResponse {
-  pub flags: Vec<String>,
-  pub permanent_flags: Vec<String>,
-  pub exists_num: u32,
-  pub recent_num: u32,
-  pub unseen_num: u32,
-  pub uid_next: u32,
-  pub uid_validity: u32
-}
-
-impl Default for SelectCmdResponse {
-  fn default() -> SelectCmdResponse {
-    SelectCmdResponse { 
-      flags: vec![],
-      permanent_flags: vec![],
-      exists_num: 0,
-      recent_num: 0,
-      unseen_num: 0,
-      uid_next: 0,
-      uid_validity: 0
-    }
-  }
 }
 
 #[cfg(test)]
