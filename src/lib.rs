@@ -184,7 +184,7 @@ impl Connection {
   pub fn select_cmd(&mut self, mailbox_name: String) -> Result<SelectCmdResponse, error::Error> {
     match self.exec_cmd(&format!("SELECT {}", mailbox_name)) {
       Ok(ResponseStatus::Ok(Some(data))) => {
-
+        
         /*
         "* FLAGS (\Answered \Flagge \Draft \Deleted \Seen $Junk $NotJunk $NotPhishing $Phishing Junk NonJunk NotJunk)"
         "* OK [PERMANENTFLAGS (\Answered \Flagged \Draft \Deleted \Seen $Junk $NotJunk $NotPhishing $Phishing Junk NonJunk NotJunk \\*)] Flags permitted."
@@ -196,26 +196,32 @@ impl Connection {
         "TAG_3 OK [READ-WRITE] INBOX selected. (Success)"
         */
   
-        //todo
         let re_flags = Regex::new(r"FLAGS\s\((.+)\)").unwrap();
-        let re_repm_flags = Regex::new(r"\[PERMANENTFLAGS\s\(.+\)\]").unwrap();
+        let re_perm_flags = Regex::new(r"\[PERMANENTFLAGS\s\((.+)\)\]").unwrap();
         let re_uid_validity = Regex::new(r"\[UIDVALIDITY\s(\d+)\]").unwrap();
         let re_exists_num = Regex::new(r"(\d+)\sEXISTS").unwrap();
         let re_recent_num = Regex::new(r"(\d+)\sRECENT").unwrap();
+        let re_unseen_num = Regex::new(r"\[UNSEEN\s(\d+)\]").unwrap();
         let re_uid_next = Regex::new(r"\[UIDNEXT\s(\d+)\]").unwrap();
         let re_tag_and_res = Regex::new(&format!(r"{}\s(OK|NO|BAD){{1}}", self.get_current_tag())).unwrap();
-        let mut scr = SelectCmdResponse::default();
 
+        let mut scr = SelectCmdResponse::default();
         for x in data.iter() {
+
+//          println!("[DEBUG] x: {}", x);
+
           if re_flags.is_match(&x) {
             let cp = re_flags.captures(&x).unwrap();
             let flg1 = cp.at(1).unwrap().to_string();
-
-            println!("[DEBUG] flags: {}", flg1);
-
             let flg2: Vec<&str> = flg1.split(" ").collect();
-            let flg3 = flg2.iter().map(|x| x.to_string()).collect();
-            scr.flags = flg3;
+            scr.flags = flg2.iter().map(|x| x.to_string()).collect();
+          }
+
+          if re_perm_flags.is_match(&x) {
+            let cp = re_perm_flags.captures(&x).unwrap();
+            let flg1 = cp.at(1).unwrap().to_string();
+            let flg2: Vec<&str> = flg1.split(" ").collect();
+            scr.permanent_flags = flg2.iter().map(|x| x.to_string()).collect();
           }
 
           if re_exists_num.is_match(&x) {
@@ -228,9 +234,19 @@ impl Connection {
             scr.recent_num = cp.at(1).unwrap().parse::<u32>().unwrap();
           }
 
+          if re_uid_next.is_match(&x) {
+            let cp = re_uid_next.captures(&x).unwrap();
+            scr.uid_next = cp.at(1).unwrap().parse::<u32>().unwrap();
+          }
+
           if re_uid_validity.is_match(&x) {
             let cp = re_uid_validity.captures(&x).unwrap();
             scr.uid_validity = cp.at(1).unwrap().parse::<u32>().unwrap();
+          }
+
+          if re_unseen_num.is_match(&x) {
+            let cp = re_unseen_num.captures(&x).unwrap();
+            scr.unseen_num = cp.at(1).unwrap().parse::<u32>().unwrap();
           }
         }
 
