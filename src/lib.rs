@@ -218,9 +218,72 @@ impl Connection {
     self.exec_cmd(&format!("LOGIN {} {}", login, password))
   }
 
-  //todo
   pub fn select_cmd(&mut self, mailbox_name: String) -> Result<SelectCmdResponse, error::Error> {
-    match self.exec_cmd(&format!("SELECT {}", mailbox_name)) {
+    self.select_cmd_generic(mailbox_name, "select".to_string())
+  }
+
+  pub fn examine_cmd(&mut self, mailbox_name: String) -> Result<SelectCmdResponse, error::Error> {  
+    self.select_cmd_generic(mailbox_name, "examine".to_string())
+  }
+
+  fn exec_cmd(&mut self, cmd: &str) -> Result<ResponseStatus, error::Error> {
+    let tag = self.generate_tag();
+
+    //todo refactor
+    let stcp_conn = match self.tcp_stream_ex {
+      TcpStreamEx::Tls(ref mut x) => x,
+      _ => panic!("Unable to deconstruct value")
+    };
+    
+    match stcp_conn.write(format!("{} {}\r\n", tag, cmd).as_bytes()) {
+      Ok(x) => {
+        let byte_buf: &mut [u8] = &mut [0];
+        let mut read_buf: Vec<u8> = Vec::new();
+        let regex_str = format!(r"{}\s(OK|NO|BAD){{1}}", tag);  //  let regex_str = format!(r"{}\s(OK\b|NO\b|BAD\b)", tag);
+        let cmd_resp_re = Regex::new(&regex_str).unwrap();
+        loop {
+          if read_buf.len() >= NEW_LINE_FULL_CODE.len() && &read_buf[read_buf.len() - NEW_LINE_FULL_CODE.len()..] == &NEW_LINE_FULL_CODE[..] {
+            //todo
+            let m1 = String::from_utf8(read_buf.clone()).unwrap();
+            if cmd_resp_re.is_match(&m1) {
+              break;
+            }
+          }
+
+          match stcp_conn.read(byte_buf) {
+            Ok(_) => read_buf.push(byte_buf[0]),
+            Err(e) => println!("aaa") //todo
+          }
+        }
+
+        //todo refactor
+        let resp = String::from_utf8(read_buf.clone()).unwrap();
+        let caps = cmd_resp_re.captures(&resp).unwrap();
+        let data = Some(resp.split("\r\n").map(|x| x.to_string()).collect());
+        println!("[DEBUG] exec cmd res: {}", caps.at(1).unwrap());//todo remove
+        Ok(match caps.at(1) {
+          Some("OK") => ResponseStatus::Ok(data),
+          Some("NO") => ResponseStatus::No(data),
+          Some("BAD") => ResponseStatus::Bad(data),
+          _ => panic!("Invalid response")
+        })
+      },
+      _ => Err(error::Error::SendCommand)
+    }
+  }
+
+  fn generate_tag(&self) -> String {
+    let v = self.tag_sequence_number.get();
+    self.tag_sequence_number.set(v + 1);
+    format!("{}_{}", Connection::tag_prefix(), self.tag_sequence_number.get())
+  }
+
+  fn get_current_tag(&self) -> String {
+    format!("{}_{}", Connection::tag_prefix(), self.tag_sequence_number.get())
+  }
+
+  fn select_cmd_generic(&mut self, mailbox_name: String, cmd: String) -> Result<SelectCmdResponse, error::Error> {  
+    match self.exec_cmd(&format!("{} {}", cmd, mailbox_name)) {
       Ok(ResponseStatus::Ok(Some(data))) => {
         
         /*
@@ -307,76 +370,11 @@ impl Connection {
 
   }
 
-  //todo
-  pub fn examine_cmd(&mut self, mailbox_name: String) -> Result<ResponseStatus, error::Error> {
-    match self.exec_cmd(&format!("EXAMINE {}", mailbox_name)) {
-      Ok(ResponseStatus::Ok(Some(data))) => {
-        unimplemented!()
-      },
-      _ => unimplemented!(),
-    }
-  }
-
-  fn exec_cmd(&mut self, cmd: &str) -> Result<ResponseStatus, error::Error> {
-    let tag = self.generate_tag();
-
-    //todo refactor
-    let stcp_conn = match self.tcp_stream_ex {
-      TcpStreamEx::Tls(ref mut x) => x,
-      _ => panic!("Unable to deconstruct value")
-    };
-    
-    match stcp_conn.write(format!("{} {}\r\n", tag, cmd).as_bytes()) {
-      Ok(x) => {
-        let byte_buf: &mut [u8] = &mut [0];
-        let mut read_buf: Vec<u8> = Vec::new();
-        let regex_str = format!(r"{}\s(OK|NO|BAD){{1}}", tag);  //  let regex_str = format!(r"{}\s(OK\b|NO\b|BAD\b)", tag);
-        let cmd_resp_re = Regex::new(&regex_str).unwrap();
-        loop {
-          if read_buf.len() >= NEW_LINE_FULL_CODE.len() && &read_buf[read_buf.len() - NEW_LINE_FULL_CODE.len()..] == &NEW_LINE_FULL_CODE[..] {
-            //todo
-            let m1 = String::from_utf8(read_buf.clone()).unwrap();
-            if cmd_resp_re.is_match(&m1) {
-              break;
-            }
-          }
-
-          match stcp_conn.read(byte_buf) {
-            Ok(_) => read_buf.push(byte_buf[0]),
-            Err(e) => println!("aaa") //todo
-          }
-        }
-
-        //todo refactor
-        let resp = String::from_utf8(read_buf.clone()).unwrap();
-        let caps = cmd_resp_re.captures(&resp).unwrap();
-        let data = Some(resp.split("\r\n").map(|x| x.to_string()).collect());
-        println!("[DEBUG] exec cmd res: {}", caps.at(1).unwrap());//todo remove
-        Ok(match caps.at(1) {
-          Some("OK") => ResponseStatus::Ok(data),
-          Some("NO") => ResponseStatus::No(data),
-          Some("BAD") => ResponseStatus::Bad(data),
-          _ => panic!("Invalid response")
-        })
-      },
-      _ => Err(error::Error::SendCommand)
-    }
-  }
-
-  fn generate_tag(&self) -> String {
-    let v = self.tag_sequence_number.get();
-    self.tag_sequence_number.set(v + 1);
-    format!("{}_{}", Connection::tag_prefix(), self.tag_sequence_number.get())
-  }
-
-  fn get_current_tag(&self) -> String {
-    format!("{}_{}", Connection::tag_prefix(), self.tag_sequence_number.get())
-  }
-  
-// pub fn examine_cmd()
   // pub fn create_cmd()
   // pub fn delete_cmd()
   // pub fn rename_cmd()
+
+
   // pub fn subscribe_cmd()
   // pub fn unsubscribe_cmd()
   // pub fn list_cmd()
