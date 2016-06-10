@@ -216,18 +216,6 @@ impl Connection {
  fn select_cmd_generic(&mut self, mailbox_name: String, cmd: String) -> Result<SelectCmdResponse, error::Error> {  
     match self.exec_cmd(&format!("{} {}", cmd, mailbox_name)) {
       Ok(ResponseStatus::Ok(data)) => {
-        
-        /*
-        "* FLAGS (\Answered \Flagge \Draft \Deleted \Seen $Junk $NotJunk $NotPhishing $Phishing Junk NonJunk NotJunk)"
-        "* OK [PERMANENTFLAGS (\Answered \Flagged \Draft \Deleted \Seen $Junk $NotJunk $NotPhishing $Phishing Junk NonJunk NotJunk \\*)] Flags permitted."
-        "* OK [UIDVALIDITY 643039027] UIDs valid."
-        "* 3883 EXISTS"
-        "* 0 RECENT"
-        "* OK [UIDNEXT 10854] Predicted next UID."
-        "* OK [HIGHESTMODSEQ 1838882]"
-        "TAG_3 OK [READ-WRITE] INBOX selected. (Success)"
-        */
-  
         let re_flags = Regex::new(r"FLAGS\s\((.+)\)").unwrap();
         let re_perm_flags = Regex::new(r"\[PERMANENTFLAGS\s\((.+)\)\]").unwrap();
         let re_uid_validity = Regex::new(r"\[UIDVALIDITY\s(\d+)\]").unwrap();
@@ -239,9 +227,6 @@ impl Connection {
 
         let mut scr = SelectCmdResponse::default();
         for x in data.iter() {
-
-//          println!("[DEBUG] x: {}", x);
-
           if re_flags.is_match(&x) {
             let cp = re_flags.captures(&x).unwrap();
             let flg1 = cp.at(1).unwrap().to_string();
@@ -299,48 +284,65 @@ impl Connection {
 
 */
     }
+ }
+
+  pub fn create_cmd(&mut self, mailbox_name: String) -> Result<ResponseStatus, error::Error> {  
+    self.exec_cmd(&format!("create {}", mailbox_name))
   }
 
- pub fn create_cmd(&mut self, mailbox_name: String) -> Result<ResponseStatus, error::Error> {  
-   self.exec_cmd(&format!("create {}", mailbox_name))
- }
+  pub fn delete_cmd(&mut self, mailbox_name: String) -> Result<ResponseStatus, error::Error> {  
+    self.exec_cmd(&format!("delete {}", mailbox_name))
+  }
 
- pub fn delete_cmd(&mut self, mailbox_name: String) -> Result<ResponseStatus, error::Error> {  
-   self.exec_cmd(&format!("delete {}", mailbox_name))
- }
+  pub fn rename_cmd(&mut self, current_name: String, new_name: String) -> Result<ResponseStatus, error::Error> {  
+    self.exec_cmd(&format!("rename {} {}", current_name, new_name))
+  }
 
- pub fn rename_cmd(&mut self, current_name: String, new_name: String) -> Result<ResponseStatus, error::Error> {  
-   self.exec_cmd(&format!("rename {} {}", current_name, new_name))
- }
+  pub fn subscribe_cmd(&mut self, mailbox_name: String) -> Result<ResponseStatus, error::Error> {  
+    self.exec_cmd(&format!("subscribe {}", mailbox_name))
+  }
 
- pub fn subscribe_cmd(&mut self, mailbox_name: String) -> Result<ResponseStatus, error::Error> {  
-   self.exec_cmd(&format!("subscribe {}", mailbox_name))
- }
+  pub fn unsubscribe_cmd(&mut self, mailbox_name: String) -> Result<ResponseStatus, error::Error> {  
+    self.exec_cmd(&format!("unsubscribe {}", mailbox_name))
+  }
 
- pub fn unsubscribe_cmd(&mut self, mailbox_name: String) -> Result<ResponseStatus, error::Error> {  
-   self.exec_cmd(&format!("unsubscribe {}", mailbox_name))
- }
+  pub fn check_cmd(&mut self) -> Result<ResponseStatus, error::Error> {  
+    self.exec_cmd(&"check")
+  }
 
- pub fn check_cmd(&mut self) -> Result<ResponseStatus, error::Error> {  
-   self.exec_cmd(&"check")
- }
+  pub fn close_cmd(&mut self) -> Result<ResponseStatus, error::Error> {  
+    self.exec_cmd(&"close")
+  }
 
- pub fn close_cmd(&mut self) -> Result<ResponseStatus, error::Error> {  
-   self.exec_cmd(&"close")
- }
+  pub fn logout_cmd(&mut self) -> Result<ResponseStatus, error::Error> {  
+    match self.exec_cmd(&"logout") {
+      Ok(ResponseStatus::Ok(data)) => {
+        for x in data.iter() {
+          if x.contains("BYE") {
+            return Ok(ResponseStatus::Ok(Vec::default()))
+          }
+        }
+        
+        Ok(ResponseStatus::Bad(vec!["The server's response doesn't contain 'BYE'".to_string()]))
+      },
 
-  // pub fn list_cmd()
-  // pub fn lsub_cmd()
-  // pub fn status_cmd()
-  // pub fn append_cmd()
-  // pub fn expunge_cmd()
-  // pub fn search_cmd()
-  // pub fn fetch_cmd()
-  // pub fn copy_cmd()
-  // Pub Fn store_cmd()
-  // pub fn uid_cmd()
+      _ => Ok(ResponseStatus::Bad(Vec::default()))
+    }
+  }
 
-      
+  pub fn copy_cmd(&mut self, seq_set_name: String, mailbox_name: String) -> Result<ResponseStatus, error::Error> {  
+    self.exec_cmd (&format!("copy {} {}", seq_set_name, mailbox_name))
+  }
+
+  pub fn list_cmd(&mut self, folder_name: String, search_pattern: String) -> Result<ResponseStatus, error::Error> {  
+    match self.exec_cmd(&format!("list {} {}", folder_name, search_pattern)) {
+      Ok(ResponseStatus::Ok(data)) => {
+        unimplemented!()
+      },
+      _ => unimplemented!()
+    }
+  }
+  
   fn login_cmd(&mut self, login: &str, password: &str) -> result::Result<ResponseStatus, error::Error> {
     self.exec_cmd(&format!("LOGIN {} {}", login, password))
   }
