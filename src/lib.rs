@@ -32,7 +32,7 @@ use std::fmt;
 
 mod error;
 
-pub enum ResponseStatus {
+pub enum Response {
   Ok(Vec<String>),
   No(Vec<String>),
   Bad(Vec<String>)
@@ -215,7 +215,7 @@ impl Connection {
 
  fn select_cmd_generic(&mut self, mailbox_name: String, cmd: String) -> Result<SelectCmdResponse, error::Error> {  
     match self.exec_cmd(&format!("{} {}", cmd, mailbox_name)) {
-      Ok(ResponseStatus::Ok(data)) => {
+      Ok(Response::Ok(data)) => {
         let re_flags = Regex::new(r"FLAGS\s\((.+)\)").unwrap();
         let re_perm_flags = Regex::new(r"\[PERMANENTFLAGS\s\((.+)\)\]").unwrap();
         let re_uid_validity = Regex::new(r"\[UIDVALIDITY\s(\d+)\]").unwrap();
@@ -272,8 +272,8 @@ impl Connection {
 
       _ => unimplemented!(),
 /*
-      Ok(ResponseStatus::No(data)) => unimplemented!(),
-      Ok(ResponseStatus::Bad(data)) => {
+      Ok(Response::No(data)) => unimplemented!(),
+      Ok(Response::Bad(data)) => {
         for x in data.iter() {
           println!("select bad resp item: {:?}", x);
         }
@@ -286,64 +286,64 @@ impl Connection {
     }
  }
 
-  pub fn create_cmd(&mut self, mailbox_name: String) -> Result<ResponseStatus, error::Error> {  
+  pub fn create_cmd(&mut self, mailbox_name: String) -> Result<Response, error::Error> {  
     self.exec_cmd(&format!("create {}", mailbox_name))
   }
 
-  pub fn delete_cmd(&mut self, mailbox_name: String) -> Result<ResponseStatus, error::Error> {  
+  pub fn delete_cmd(&mut self, mailbox_name: String) -> Result<Response, error::Error> {  
     self.exec_cmd(&format!("delete {}", mailbox_name))
   }
 
-  pub fn rename_cmd(&mut self, current_name: String, new_name: String) -> Result<ResponseStatus, error::Error> {  
+  pub fn rename_cmd(&mut self, current_name: String, new_name: String) -> Result<Response, error::Error> {  
     self.exec_cmd(&format!("rename {} {}", current_name, new_name))
   }
 
-  pub fn subscribe_cmd(&mut self, mailbox_name: String) -> Result<ResponseStatus, error::Error> {  
+  pub fn subscribe_cmd(&mut self, mailbox_name: String) -> Result<Response, error::Error> {  
     self.exec_cmd(&format!("subscribe {}", mailbox_name))
   }
 
-  pub fn unsubscribe_cmd(&mut self, mailbox_name: String) -> Result<ResponseStatus, error::Error> {  
+  pub fn unsubscribe_cmd(&mut self, mailbox_name: String) -> Result<Response, error::Error> {  
     self.exec_cmd(&format!("unsubscribe {}", mailbox_name))
   }
 
-  pub fn check_cmd(&mut self) -> Result<ResponseStatus, error::Error> {  
+  pub fn check_cmd(&mut self) -> Result<Response, error::Error> {  
     self.exec_cmd(&"check")
   }
 
-  pub fn close_cmd(&mut self) -> Result<ResponseStatus, error::Error> {  
+  pub fn close_cmd(&mut self) -> Result<Response, error::Error> {  
     self.exec_cmd(&"close")
   }
 
-  pub fn logout_cmd(&mut self) -> Result<ResponseStatus, error::Error> {  
+  pub fn logout_cmd(&mut self) -> Result<Response, error::Error> {  
     match self.exec_cmd(&"logout") {
-      Ok(ResponseStatus::Ok(data)) => {
+      Ok(Response::Ok(data)) => {
         for x in data.iter() {
           if x.contains("BYE") {
-            return Ok(ResponseStatus::Ok(Vec::default()))
+            return Ok(Response::Ok(Vec::default()))
           }
         }
         
-        Ok(ResponseStatus::Bad(vec!["The server's response doesn't contain 'BYE'".to_string()]))
+        Ok(Response::Bad(vec!["The server's response doesn't contain 'BYE'".to_string()]))
       },
 
-      _ => Ok(ResponseStatus::Bad(Vec::default()))
+      _ => Ok(Response::Bad(Vec::default()))
     }
   }
 
-  pub fn copy_cmd(&mut self, seq_set_name: String, mailbox_name: String) -> Result<ResponseStatus, error::Error> {  
+  pub fn copy_cmd(&mut self, seq_set_name: String, mailbox_name: String) -> Result<Response, error::Error> {  
     self.exec_cmd (&format!("copy {} {}", seq_set_name, mailbox_name))
   }
 
-  pub fn list_cmd(&mut self, folder_name: String, search_pattern: String) -> Result<ResponseStatus, error::Error> {  
+  pub fn list_cmd(&mut self, folder_name: String, search_pattern: String) -> Result<Response, error::Error> {  
     match self.exec_cmd(&format!("list {} {}", folder_name, search_pattern)) {
-      Ok(ResponseStatus::Ok(data)) => {
+      Ok(Response::Ok(data)) => {
         unimplemented!()
       },
       _ => unimplemented!()
     }
   }
   
-  fn login_cmd(&mut self, login: &str, password: &str) -> result::Result<ResponseStatus, error::Error> {
+  fn login_cmd(&mut self, login: &str, password: &str) -> result::Result<Response, error::Error> {
     self.exec_cmd(&format!("LOGIN {} {}", login, password))
   }
 
@@ -355,7 +355,11 @@ impl Connection {
     self.select_cmd_generic(mailbox_name, "examine".to_string())
   }
 
-  fn exec_cmd(&mut self, cmd: &str) -> Result<ResponseStatus, error::Error> {
+  pub fn expunge_cmd(&mut self) -> Result<Response, error::Error> {  
+    self.exec_cmd(&"expunge")
+  }
+
+  fn exec_cmd(&mut self, cmd: &str) -> Result<Response, error::Error> {
     let tag = self.generate_tag();
 
     //todo refactor
@@ -389,9 +393,9 @@ impl Connection {
         let caps = cmd_resp_re.captures(&resp).unwrap();
         let data = resp.split("\r\n").map(|x| x.to_string()).collect();
         Ok(match caps.at(1) {
-          Some("OK") => ResponseStatus::Ok(data),
-          Some("NO") => ResponseStatus::No(data),
-          Some("BAD") => ResponseStatus::Bad(data),
+          Some("OK") => Response::Ok(data),
+          Some("NO") => Response::No(data),
+          Some("BAD") => Response::Bad(data),
           _ => panic!("Invalid response")
         })
       },
