@@ -330,6 +330,14 @@ impl Connection {
     }
   }
 
+  pub fn capability_cmd(&mut self) -> Result<Response, error::Error> {  
+    self.exec_cmd(&"capability") //todo -- parse response, remove redundant stuff
+  }
+
+  pub fn fetch_cmd(&mut self, seq_set_name: String, message_data_query: String) -> Result<Response, error::Error> {  
+    self.exec_cmd(&format!("fetch {} {}", seq_set_name, message_data_query))
+  }
+
   pub fn copy_cmd(&mut self, seq_set_name: String, mailbox_name: String) -> Result<Response, error::Error> {  
     self.exec_cmd (&format!("copy {} {}", seq_set_name, mailbox_name))
   }
@@ -385,7 +393,7 @@ impl Connection {
 
           match stcp_conn.read(byte_buf) {
             Ok(_) => read_buf.push(byte_buf[0]),
-            Err(e) => println!("aaa") //todo
+            Err(e) => println!("Error reading bytes from the socket: {}", e) //todo
           }
         }
 
