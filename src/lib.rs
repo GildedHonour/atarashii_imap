@@ -62,10 +62,6 @@ pub enum Authentication {
   Skey
 }
 
-pub struct Mailbox {
-
-}
-
 enum TcpStreamEx {
   Plain(TcpStream),
   
@@ -150,7 +146,7 @@ impl Connection {
             //read greating
 
             let mut conn = Connection::new(TcpStreamEx::Plain(tcp_conn), host, port);
-            match conn.login_cmd(login, password) {
+            match conn.login(login, password) {
               Ok(login_res) => unimplemented!(),
               Err(e) => unimplemented!()
             }
@@ -199,8 +195,8 @@ impl Connection {
         }
         
         let mut conn = Connection::new(TcpStreamEx::Tls(stcp_conn), host, port);
-        //then login_cmd
-        match conn.login_cmd(login, password) {
+        //then login
+        match conn.login(login, password) {
           Ok(login_res) => {
             println!("Login OK");
             Ok(conn)
@@ -213,8 +209,8 @@ impl Connection {
     }
   }
 
- fn select_cmd_generic(&mut self, mailbox_name: String, cmd: String) -> Result<SelectCmdResponse, error::Error> {  
-    match self.exec_cmd(&format!("{} {}", cmd, mailbox_name)) {
+ fn select_generic(&mut self, mailbox_name: String, cmd: String) -> Result<SelectCmdResponse, error::Error> {  
+    match self.exec(&format!("{} {}", cmd, mailbox_name)) {
       Ok(Response::Ok(data)) => {
         let re_flags = Regex::new(r"FLAGS\s\((.+)\)").unwrap();
         let re_perm_flags = Regex::new(r"\[PERMANENTFLAGS\s\((.+)\)\]").unwrap();
@@ -286,32 +282,32 @@ impl Connection {
     }
  }
 
-  pub fn create_cmd(&mut self, mailbox_name: String) -> Result<Response, error::Error> {  
-    self.exec_cmd(&format!("create {}", mailbox_name))
+  pub fn create(&mut self, mailbox_name: String) -> Result<Response, error::Error> {  
+    self.exec(&format!("create {}", mailbox_name))
   }
 
-  pub fn delete_cmd(&mut self, mailbox_name: String) -> Result<Response, error::Error> {  
-    self.exec_cmd(&format!("delete {}", mailbox_name))
+  pub fn delete(&mut self, mailbox_name: String) -> Result<Response, error::Error> {  
+    self.exec(&format!("delete {}", mailbox_name))
   }
 
-  pub fn rename_cmd(&mut self, current_name: String, new_name: String) -> Result<Response, error::Error> {  
-    self.exec_cmd(&format!("rename {} {}", current_name, new_name))
+  pub fn rename(&mut self, current_name: String, new_name: String) -> Result<Response, error::Error> {  
+    self.exec(&format!("rename {} {}", current_name, new_name))
   }
 
-  pub fn subscribe_cmd(&mut self, mailbox_name: String) -> Result<Response, error::Error> {  
-    self.exec_cmd(&format!("subscribe {}", mailbox_name))
+  pub fn subscribe(&mut self, mailbox_name: String) -> Result<Response, error::Error> {  
+    self.exec(&format!("subscribe {}", mailbox_name))
   }
 
-  pub fn unsubscribe_cmd(&mut self, mailbox_name: String) -> Result<Response, error::Error> {  
-    self.exec_cmd(&format!("unsubscribe {}", mailbox_name))
+  pub fn unsubscribe(&mut self, mailbox_name: String) -> Result<Response, error::Error> {  
+    self.exec(&format!("unsubscribe {}", mailbox_name))
   }
 
-  pub fn close_cmd(&mut self) -> Result<Response, error::Error> {  
-    self.exec_cmd(&"close")
+  pub fn close(&mut self) -> Result<Response, error::Error> {  
+    self.exec(&"close")
   }
 
-  pub fn logout_cmd(&mut self) -> Result<Response, error::Error> {  
-    match self.exec_cmd(&"logout") {
+  pub fn logout(&mut self) -> Result<Response, error::Error> {  
+    match self.exec(&"logout") {
       Ok(Response::Ok(data)) => {
         for x in data.iter() {
           if x.contains("BYE") {
@@ -326,51 +322,51 @@ impl Connection {
     }
   }
 
-  pub fn capability_cmd(&mut self) -> Result<Response, error::Error> {  
-    self.exec_cmd(&"capability") //todo -- parse response, remove redundant stuff
+  pub fn capability(&mut self) -> Result<Response, error::Error> {  
+    self.exec(&"capability") //todo -- parse response, remove redundant stuff
   }
 
-  pub fn fetch_cmd(&mut self, seq_set: String, message_data_query: String) -> Result<Response, error::Error> {  
-    self.exec_cmd(&format!("fetch {} {}", seq_set, message_data_query))
+  pub fn fetch(&mut self, seq_set: String, message_data_query: String) -> Result<Response, error::Error> {  
+    self.exec(&format!("fetch {} {}", seq_set, message_data_query))
   }
 
-  pub fn copy_cmd(&mut self, seq_set: String, mailbox_name: String) -> Result<Response, error::Error> {  
-    self.exec_cmd (&format!("copy {} {}", seq_set, mailbox_name))
+  pub fn copy(&mut self, seq_set: String, mailbox_name: String) -> Result<Response, error::Error> {  
+    self.exec (&format!("copy {} {}", seq_set, mailbox_name))
   }
 
-  pub fn list_cmd(&mut self, folder_name: String, search_pattern: String) -> Result<Response, error::Error> {  
-    self.exec_cmd(&format!("list \"{}\" \"{}\"", folder_name, search_pattern))
+  pub fn list(&mut self, folder_name: String, search_pattern: String) -> Result<Response, error::Error> {  
+    self.exec(&format!("list \"{}\" \"{}\"", folder_name, search_pattern))
   }
 
-  pub fn lsub_cmd(&mut self, folder_name: String, search_pattern: String) -> Result<Response, error::Error> {  
-    self.exec_cmd(&format!("lsub \"{}\" \"{}\"", folder_name, search_pattern))
+  pub fn lsub(&mut self, folder_name: String, search_pattern: String) -> Result<Response, error::Error> {  
+    self.exec(&format!("lsub \"{}\" \"{}\"", folder_name, search_pattern))
   }
 
-  fn login_cmd(&mut self, login: &str, password: &str) -> result::Result<Response, error::Error> {
-    self.exec_cmd(&format!("LOGIN {} {}", login, password))
+  fn login(&mut self, login: &str, password: &str) -> result::Result<Response, error::Error> {
+    self.exec(&format!("LOGIN {} {}", login, password))
   }
 
-  pub fn select_cmd(&mut self, mailbox_name: String) -> Result<SelectCmdResponse, error::Error> {
-    self.select_cmd_generic(mailbox_name, "select".to_string())
+  pub fn select(&mut self, mailbox_name: String) -> Result<SelectCmdResponse, error::Error> {
+    self.select_generic(mailbox_name, "select".to_string())
   }
 
-  pub fn examine_cmd(&mut self, mailbox_name: String) -> Result<SelectCmdResponse, error::Error> {  
-    self.select_cmd_generic(mailbox_name, "examine".to_string())
+  pub fn examine(&mut self, mailbox_name: String) -> Result<SelectCmdResponse, error::Error> {  
+    self.select_generic(mailbox_name, "examine".to_string())
   }
 
-  pub fn expunge_cmd(&mut self) -> Result<Response, error::Error> {  
-    self.exec_cmd(&"expunge")
+  pub fn expunge(&mut self) -> Result<Response, error::Error> {  
+    self.exec(&"expunge")
   }
 
-  pub fn check_cmd(&mut self) -> Result<Response, error::Error> {  
-    self.exec_cmd(&"check")
+  pub fn check(&mut self) -> Result<Response, error::Error> {  
+    self.exec(&"check")
   }
 
-  pub fn noop_cmd(&mut self) -> Result<Response, error::Error> {  
-    self.exec_cmd(&"noop")
+  pub fn noop(&mut self) -> Result<Response, error::Error> {  
+    self.exec(&"noop")
   }
 
-  fn exec_cmd(&mut self, cmd: &str) -> Result<Response, error::Error> {
+  fn exec(&mut self, cmd: &str) -> Result<Response, error::Error> {
     let tag = self.generate_tag();
 
     //todo refactor
