@@ -19,7 +19,7 @@ use openssl::ssl::SslMethod::Sslv23;
 //.......
 match Connection::open_secure("imap.gmail.com", SslContext::new(Sslv23).unwrap(), "gmail_login@gmail.com", "password") {
   Ok(mut conn) => {
-    match conn.select_cmd("INBOX".to_string()) {
+    match conn.select("inbox".to_string()) {
       Ok(sel_res) => {
         println!("select cmd result: {}", sel_res);
       },
