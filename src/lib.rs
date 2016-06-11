@@ -306,10 +306,6 @@ impl Connection {
     self.exec_cmd(&format!("unsubscribe {}", mailbox_name))
   }
 
-  pub fn check_cmd(&mut self) -> Result<Response, error::Error> {  
-    self.exec_cmd(&"check")
-  }
-
   pub fn close_cmd(&mut self) -> Result<Response, error::Error> {  
     self.exec_cmd(&"close")
   }
@@ -334,23 +330,22 @@ impl Connection {
     self.exec_cmd(&"capability") //todo -- parse response, remove redundant stuff
   }
 
-  pub fn fetch_cmd(&mut self, seq_set_name: String, message_data_query: String) -> Result<Response, error::Error> {  
-    self.exec_cmd(&format!("fetch {} {}", seq_set_name, message_data_query))
+  pub fn fetch_cmd(&mut self, seq_set: String, message_data_query: String) -> Result<Response, error::Error> {  
+    self.exec_cmd(&format!("fetch {} {}", seq_set, message_data_query))
   }
 
-  pub fn copy_cmd(&mut self, seq_set_name: String, mailbox_name: String) -> Result<Response, error::Error> {  
-    self.exec_cmd (&format!("copy {} {}", seq_set_name, mailbox_name))
+  pub fn copy_cmd(&mut self, seq_set: String, mailbox_name: String) -> Result<Response, error::Error> {  
+    self.exec_cmd (&format!("copy {} {}", seq_set, mailbox_name))
   }
 
   pub fn list_cmd(&mut self, folder_name: String, search_pattern: String) -> Result<Response, error::Error> {  
-    match self.exec_cmd(&format!("list {} {}", folder_name, search_pattern)) {
-      Ok(Response::Ok(data)) => {
-        unimplemented!()
-      },
-      _ => unimplemented!()
-    }
+    self.exec_cmd(&format!("list \"{}\" \"{}\"", folder_name, search_pattern))
   }
-  
+
+  pub fn lsub_cmd(&mut self, folder_name: String, search_pattern: String) -> Result<Response, error::Error> {  
+    self.exec_cmd(&format!("lsub \"{}\" \"{}\"", folder_name, search_pattern))
+  }
+
   fn login_cmd(&mut self, login: &str, password: &str) -> result::Result<Response, error::Error> {
     self.exec_cmd(&format!("LOGIN {} {}", login, password))
   }
@@ -365,6 +360,14 @@ impl Connection {
 
   pub fn expunge_cmd(&mut self) -> Result<Response, error::Error> {  
     self.exec_cmd(&"expunge")
+  }
+
+  pub fn check_cmd(&mut self) -> Result<Response, error::Error> {  
+    self.exec_cmd(&"check")
+  }
+
+  pub fn noop_cmd(&mut self) -> Result<Response, error::Error> {  
+    self.exec_cmd(&"noop")
   }
 
   fn exec_cmd(&mut self, cmd: &str) -> Result<Response, error::Error> {

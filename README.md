@@ -17,7 +17,6 @@ use openssl::ssl::{SslContext, SslStream};
 use openssl::ssl::SslMethod::Sslv23;
 
 //.......
-
 match Connection::open_secure("imap.gmail.com", SslContext::new(Sslv23).unwrap(), "gmail_login@gmail.com", "password") {
   Ok(mut conn) => {
     match conn.select_cmd("INBOX".to_string()) {
@@ -32,6 +31,25 @@ match Connection::open_secure("imap.gmail.com", SslContext::new(Sslv23).unwrap()
 }
 
 ```
+
+## Commands supported
+* select
+* examine
+* create
+* delete
+* rename
+* subscribe
+* unsubscribe
+* close
+* logout
+* capability
+* fetch
+* copy
+* list
+* examine
+* expunge
+* check
+* noop
 
 
 ## Author
