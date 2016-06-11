@@ -3,9 +3,12 @@ name = "atarashii_imap"
 version = "0.2.0"
 authors = ["Alex Maslakov <me@gildedhonour.com>"]
 repository = "https://github.com/GildedHonour/atarashii_imap"
-description = "IMAP client for Rust"
+homepage = "https://github.com/GildedHonour/atarashii_imap"
+documentation = "https://github.com/GildedHonour/atarashii_imap"
+description = "IMAP client written in Rust"
 readme = "README.md"
 license = "Apache-2.0"
+keywords = ["imap"]
 
 [dependencies]
 openssl = "0.7.10"
