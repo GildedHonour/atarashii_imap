@@ -20,4 +20,4 @@ path = "src/lib.rs"
 
 [[bin]]
 name = "atarashii_imap"
-path = "src/app.rs"
+path = "examples/app.rs"
