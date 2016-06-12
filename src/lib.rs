@@ -70,7 +70,7 @@ enum TcpStreamEx {
   Tls(ssl::SslStream<TcpStream>)
 }
 
-pub struct SelectCmdResponse {
+pub struct Mailbox {
   pub flags: Vec<String>,
   pub permanent_flags: Vec<String>,
   pub exists_num: u32,
@@ -80,9 +80,9 @@ pub struct SelectCmdResponse {
   pub uid_validity: u32
 }
 
-impl Default for SelectCmdResponse {
-  fn default() -> SelectCmdResponse {
-    SelectCmdResponse { 
+impl Default for Mailbox {
+  fn default() -> Mailbox {
+    Mailbox { 
       flags: vec![],
       permanent_flags: vec![],
       exists_num: 0,
@@ -94,9 +94,9 @@ impl Default for SelectCmdResponse {
   }
 }
 
-impl fmt::Display for SelectCmdResponse {
+impl fmt::Display for Mailbox {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "exists: {}\r\n recent: {}\r\n unseen: {}\r\n uid validity: {}\r\n uid next: {}\r\n flags: {}\r\n perm flags: {}",
+    write!(f, "Exists: {}\r\nRecent: {}\r\nUnseen: {}\r\nUid validity: {}\r\nUid next: {}\r\nFlags: {}\r\nPermanent flags: {}",
            self.exists_num, 
            self.recent_num,
            self.unseen_num,
@@ -209,7 +209,7 @@ impl Connection {
     }
   }
 
- fn select_generic(&mut self, mailbox_name: String, cmd: String) -> Result<SelectCmdResponse, error::Error> {  
+ fn select_generic(&mut self, mailbox_name: String, cmd: String) -> Result<Mailbox, error::Error> {  
     match self.exec_cmd(&format!("{} {}", cmd, mailbox_name)) {
       Ok(Response::Ok(data)) => {
         let re_flags = Regex::new(r"FLAGS\s\((.+)\)").unwrap();
@@ -221,7 +221,7 @@ impl Connection {
         let re_uid_next = Regex::new(r"\[UIDNEXT\s(\d+)\]").unwrap();
         let re_tag_and_res = Regex::new(&format!(r"{}\s(OK|NO|BAD){{1}}", self.get_current_tag())).unwrap();
 
-        let mut scr = SelectCmdResponse::default();
+        let mut scr = Mailbox::default();
         for x in data.iter() {
           if re_flags.is_match(&x) {
             let cp = re_flags.captures(&x).unwrap();
@@ -342,11 +342,11 @@ impl Connection {
     self.exec_cmd(&format!("lsub \"{}\" \"{}\"", folder_name, search_pattern))
   }
 
-  pub fn select(&mut self, mailbox_name: String) -> Result<SelectCmdResponse, error::Error> {
+  pub fn select(&mut self, mailbox_name: String) -> Result<Mailbox, error::Error> {
     self.select_generic(mailbox_name, "select".to_string())
   }
 
-  pub fn examine(&mut self, mailbox_name: String) -> Result<SelectCmdResponse, error::Error> {  
+  pub fn examine(&mut self, mailbox_name: String) -> Result<Mailbox, error::Error> {  
     self.select_generic(mailbox_name, "examine".to_string())
   }
 
