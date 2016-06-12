@@ -6,6 +6,15 @@
 ### In progress
 It's under development...
 
+## Usage
+
+Put this in your `Cargo.toml`:
+
+```toml
+[dependencies]
+atarashii_imap = "0.2.0"
+```
+
 
 ### Example
 ```rust
