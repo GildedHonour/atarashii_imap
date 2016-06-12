@@ -1,4 +1,4 @@
-新しい IMAP client
+新しい IMAP client [![Build Status](https://travis-ci.org/GildedHonour/atarashii_imap.svg?branch=master)](https://travis-ci.org/GildedHonour/atarashii_imap)
 ================================================
 
 新しい (atarashii/new) IMAP client in Rust. It supports plain and secure connections.
