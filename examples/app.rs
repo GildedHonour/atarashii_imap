@@ -46,7 +46,7 @@ fn main() {
       };
 
       println!("\r\n");
-      match conn.list("", "%") {
+      match conn.list_by_search_query("%") {
         Ok(Response::Ok(data)) => {
           for x in data.iter() {
             println!("list cmd item: {}", x);

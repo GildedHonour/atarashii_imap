@@ -334,6 +334,18 @@ impl Connection {
     self.exec_cmd (&format!("copy {} {}", seq_set, mailbox_name))
   }
 
+  pub fn list_all(&mut self) -> Result<Response, error::Error> {  
+    self.list("", "")
+  }
+
+  pub fn list_by_search_query(&mut self, search_pattern: &str) -> Result<Response, error::Error> {  
+    self.list("", search_pattern)
+  }
+
+  pub fn list_by_folder_name(&mut self, folder_name: &str) -> Result<Response, error::Error> {  
+    self.list(folder_name, "")
+  }
+
   pub fn list(&mut self, folder_name: &str, search_pattern: &str) -> Result<Response, error::Error> {  
     self.exec_cmd(&format!("list \"{}\" \"{}\"", folder_name, search_pattern))
   }

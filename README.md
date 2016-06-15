@@ -3,8 +3,11 @@
 
 新しい (atarashii/new) IMAP client in Rust. It supports plain and secure connections.
 
-### In progress
+
+## In progress
+
 It's under development...
+
 
 ## Usage
 
@@ -21,7 +24,7 @@ atarashii_imap = "0.2.0"
 extern crate atarashii_imap;
 extern crate openssl;
 
-use atarashii_imap::{Connection};
+use atarashii_imap::{Connection, Response};
 use openssl::ssl::{SslContext, SslStream};
 use openssl::ssl::SslMethod::Sslv23;
 
