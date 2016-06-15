@@ -29,7 +29,7 @@ use openssl::ssl::SslMethod::Sslv23;
 fn main() {
   match Connection::open_secure("imap.gmail.com", SslContext::new(Sslv23).unwrap(), "gmail_login@gmail.com", "password") {
     Ok(mut conn) => {
-      match conn.select("inbox".to_string()) {
+      match conn.select("inbox") {
         Ok(sel_res) => println!("select cmd result: {}", sel_res),
         _ => panic!("select cmd error")
       };
@@ -46,7 +46,7 @@ fn main() {
       };
 
       println!("\r\n");
-      match conn.list("".to_string(), "%".to_string()) {
+      match conn.list("", "%") {
         Ok(Response::Ok(data)) => {
           for x in data.iter() {
             println!("list cmd item: {}", x);
