@@ -8,7 +8,7 @@ documentation = "https://github.com/GildedHonour/atarashii_imap"
 description = "IMAP client written in Rust"
 readme = "README.md"
 license = "Apache-2.0"
-keywords = ["imap"]
+keywords = ["imap", "email", "mail"]
 
 [dependencies]
 openssl = "0.7.10"

@@ -32,12 +32,6 @@ use std::fmt;
 
 mod error;
 
-pub enum Response {
-  Ok(Vec<String>),
-  No(Vec<String>),
-  Bad(Vec<String>)
-}
-
 pub enum TcpStreamSecurity {
   Plain,
   StartTls,
@@ -53,6 +47,12 @@ impl TcpStreamSecurity {
   }
 }
 
+enum TcpStreamEx {
+  Plain(TcpStream),
+  Ssl(ssl::SslStream<TcpStream>),
+  Tls(ssl::SslStream<TcpStream>)
+}
+
 pub enum Authentication {
   Normal,
   EncryptedPassword,
@@ -62,12 +62,10 @@ pub enum Authentication {
   Skey
 }
 
-enum TcpStreamEx {
-  Plain(TcpStream),
-  
-  //todo
-  Ssl(ssl::SslStream<TcpStream>),
-  Tls(ssl::SslStream<TcpStream>)
+pub enum Response {
+  Ok(Vec<String>),
+  No(Vec<String>),
+  Bad(Vec<String>)
 }
 
 pub struct Mailbox {
@@ -82,7 +80,7 @@ pub struct Mailbox {
 
 impl Default for Mailbox {
   fn default() -> Mailbox {
-    Mailbox { 
+    Mailbox {
       flags: vec![],
       permanent_flags: vec![],
       exists_num: 0,
@@ -97,7 +95,7 @@ impl Default for Mailbox {
 impl fmt::Display for Mailbox {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     write!(f, "Exists: {}\r\nRecent: {}\r\nUnseen: {}\r\nUid validity: {}\r\nUid next: {}\r\nFlags: {}\r\nPermanent flags: {}",
-           self.exists_num, 
+           self.exists_num,
            self.recent_num,
            self.unseen_num,
            self.uid_validity,
@@ -108,7 +106,7 @@ impl fmt::Display for Mailbox {
 }
 
 pub struct Connection {
-  host: String, 
+  host: String,
   port: u16,
   tcp_stream_ex: TcpStreamEx,
   tag_sequence_number: Cell<u32>
@@ -120,12 +118,8 @@ const NEW_LINE_FULL_CODE: [u8; 2] = [CARRIAGE_RETURN_CODE, NEW_LINE_CODE];
 const NEW_LINE_FULL_CODE_LEN: usize = 2;
 
 impl Connection {
-  fn tag_prefix() -> &'static str { 
-    "TAG" 
-  }
-
-  fn get_tcp_stream(&self) -> TcpStream {
-    unimplemented!()
+  fn tag_prefix() -> &'static str {
+    "TAG"
   }
 
   fn new(tcps_ex: TcpStreamEx, host: &str, port: u16) -> Connection {
@@ -135,7 +129,7 @@ impl Connection {
   pub fn open_plain(host: &str, login: &str, password: &str) -> result::Result<Connection, error::Error> {
     Connection::open_plain2(host, login, password, TcpStreamSecurity::Plain.port())
   }
-  
+
   pub fn open_plain2(host: &str, login: &str, password: &str, port: u16) -> result::Result<Connection, error::Error> {
     match TcpStream::connect((host, port)) {
       Ok(mut tcp_conn) => {
@@ -156,7 +150,7 @@ impl Connection {
         }
       },
 
-      Err(e) => unimplemented!() 
+      Err(e) => unimplemented!()
     }
   }
 
@@ -164,15 +158,14 @@ impl Connection {
     Connection::open_secure2(host, sctx, login, password, TcpStreamSecurity::SslTls.port())
   }
 
-  pub fn open_secure2(host: &str, sctx: ssl::SslContext, login: &str, password: &str, port: u16) -> result::Result<Connection, error::Error> {
+  pub fn open_secure2(host: &str, sctx: ssl::SslContext, login: &str, password: &str,
+                      port: u16) -> result::Result<Connection, error::Error> {
     match TcpStream::connect((host, port)) {
       Ok(tcp_conn) => {
         let mut stcp_conn = ssl::SslStream::connect(&sctx, tcp_conn).unwrap();
         let byte_buf: &mut [u8] = &mut [0];
         let mut greet_buf = Vec::new();
 
-        //todo refactor
-        //2 const
         loop {
           if greet_buf.len() >= NEW_LINE_FULL_CODE_LEN && &greet_buf[greet_buf.len() - NEW_LINE_FULL_CODE_LEN..] == &NEW_LINE_FULL_CODE[..] {
             break;
@@ -180,36 +173,28 @@ impl Connection {
 
           match stcp_conn.read(byte_buf) {
             Ok(x) => greet_buf.push(byte_buf[0]),
-            Err(e) => println!("aaa") //todo
+            Err(e) => panic!("Read error") //todo
           };
         }
 
-        let greeting_re = Regex::new(r"^[*] OK").unwrap(); //todo
-        let a1 = String::from_utf8(greet_buf).unwrap();
-        if !greeting_re.is_match(&a1) {
-            //todo 
-          println!("Error, the greeting doesn't match the string OK");
+        let greeting_re = Regex::new(r"^[*] OK").unwrap();
+        let maybe_greeting = String::from_utf8(greet_buf).unwrap();
+        if !greeting_re.is_match(&maybe_greeting) {
           return Err(error::Error::Connect)
-        } else {
-          println!("greeting response: {}", a1);
         }
-        
+
         let mut conn = Connection::new(TcpStreamEx::Tls(stcp_conn), host, port);
-        //then login
         match conn.login(login, password) {
-          Ok(login_res) => {
-            println!("Login OK");
-            Ok(conn)
-          },
+          Ok(_) => Ok(conn),
           Err(e) => Err(error::Error::Login)
         }
       },
-      
+
       Err(e) => panic!("{}", "Unable to connect")
     }
   }
 
- fn select_generic(&mut self, mailbox_name: &str, cmd: &str) -> Result<Mailbox, error::Error> {  
+ fn select_generic(&mut self, mailbox_name: &str, cmd: &str) -> Result<Mailbox, error::Error> {
     match self.exec_cmd(&format!("{} {}", cmd, mailbox_name)) {
       Ok(Response::Ok(data)) => {
         let re_flags = Regex::new(r"FLAGS\s\((.+)\)").unwrap();
@@ -282,31 +267,31 @@ impl Connection {
     }
  }
 
-  pub fn create(&mut self, mailbox_name: &str) -> Result<Response, error::Error> {  
+  pub fn create(&mut self, mailbox_name: &str) -> Result<Response, error::Error> {
     self.exec_cmd(&format!("create {}", mailbox_name))
   }
 
-  pub fn delete(&mut self, mailbox_name: &str) -> Result<Response, error::Error> {  
+  pub fn delete(&mut self, mailbox_name: &str) -> Result<Response, error::Error> {
     self.exec_cmd(&format!("delete {}", mailbox_name))
   }
 
-  pub fn rename(&mut self, current_name: &str, new_name: &str) -> Result<Response, error::Error> {  
+  pub fn rename(&mut self, current_name: &str, new_name: &str) -> Result<Response, error::Error> {
     self.exec_cmd(&format!("rename {} {}", current_name, new_name))
   }
 
-  pub fn subscribe(&mut self, mailbox_name: &str) -> Result<Response, error::Error> {  
+  pub fn subscribe(&mut self, mailbox_name: &str) -> Result<Response, error::Error> {
     self.exec_cmd(&format!("subscribe {}", mailbox_name))
   }
 
-  pub fn unsubscribe(&mut self, mailbox_name: &str) -> Result<Response, error::Error> {  
+  pub fn unsubscribe(&mut self, mailbox_name: &str) -> Result<Response, error::Error> {
     self.exec_cmd(&format!("unsubscribe {}", mailbox_name))
   }
 
-  pub fn close(&mut self) -> Result<Response, error::Error> {  
+  pub fn close(&mut self) -> Result<Response, error::Error> {
     self.exec_cmd(&"close")
   }
 
-  pub fn logout(&mut self) -> Result<Response, error::Error> {  
+  pub fn logout(&mut self) -> Result<Response, error::Error> {
     match self.exec_cmd(&"logout") {
       Ok(Response::Ok(data)) => {
         for x in data.iter() {
@@ -314,7 +299,7 @@ impl Connection {
             return Ok(Response::Ok(Vec::default()))
           }
         }
-        
+
         Ok(Response::Bad(vec!["The server's response doesn't contain 'BYE'".to_string()]))
       },
 
@@ -322,35 +307,35 @@ impl Connection {
     }
   }
 
-  pub fn capability(&mut self) -> Result<Response, error::Error> {  
+  pub fn capability(&mut self) -> Result<Response, error::Error> {
     self.exec_cmd(&"capability") //todo -- parse response, remove redundant stuff
   }
 
-  pub fn fetch(&mut self, seq_set: &str, message_data_query: &str) -> Result<Response, error::Error> {  
+  pub fn fetch(&mut self, seq_set: &str, message_data_query: &str) -> Result<Response, error::Error> {
     self.exec_cmd(&format!("fetch {} {}", seq_set, message_data_query))
   }
 
-  pub fn copy(&mut self, seq_set: String, mailbox_name: String) -> Result<Response, error::Error> {  
+  pub fn copy(&mut self, seq_set: String, mailbox_name: String) -> Result<Response, error::Error> {
     self.exec_cmd (&format!("copy {} {}", seq_set, mailbox_name))
   }
 
-  pub fn list_all(&mut self) -> Result<Response, error::Error> {  
+  pub fn list_all(&mut self) -> Result<Response, error::Error> {
     self.list("", "")
   }
 
-  pub fn list_by_search_query(&mut self, search_pattern: &str) -> Result<Response, error::Error> {  
+  pub fn list_by_search_query(&mut self, search_pattern: &str) -> Result<Response, error::Error> {
     self.list("", search_pattern)
   }
 
-  pub fn list_by_folder_name(&mut self, folder_name: &str) -> Result<Response, error::Error> {  
+  pub fn list_by_folder_name(&mut self, folder_name: &str) -> Result<Response, error::Error> {
     self.list(folder_name, "")
   }
 
-  pub fn list(&mut self, folder_name: &str, search_pattern: &str) -> Result<Response, error::Error> {  
+  pub fn list(&mut self, folder_name: &str, search_pattern: &str) -> Result<Response, error::Error> {
     self.exec_cmd(&format!("list \"{}\" \"{}\"", folder_name, search_pattern))
   }
 
-  pub fn lsub(&mut self, folder_name: &str, search_pattern: &str) -> Result<Response, error::Error> {  
+  pub fn lsub(&mut self, folder_name: &str, search_pattern: &str) -> Result<Response, error::Error> {
     self.exec_cmd(&format!("lsub \"{}\" \"{}\"", folder_name, search_pattern))
   }
 
@@ -358,31 +343,31 @@ impl Connection {
     self.select_generic(mailbox_name, "select")
   }
 
-  pub fn examine(&mut self, mailbox_name: &str) -> Result<Mailbox, error::Error> {  
+  pub fn examine(&mut self, mailbox_name: &str) -> Result<Mailbox, error::Error> {
     self.select_generic(mailbox_name, "examine")
   }
 
-  pub fn expunge(&mut self) -> Result<Response, error::Error> {  
+  pub fn expunge(&mut self) -> Result<Response, error::Error> {
     self.exec_cmd(&"expunge")
   }
 
-  pub fn check(&mut self) -> Result<Response, error::Error> {  
+  pub fn check(&mut self) -> Result<Response, error::Error> {
     self.exec_cmd(&"check")
   }
 
-  pub fn noop(&mut self) -> Result<Response, error::Error> {  
+  pub fn noop(&mut self) -> Result<Response, error::Error> {
     self.exec_cmd(&"noop")
   }
 
   fn exec_cmd(&mut self, cmd: &str) -> Result<Response, error::Error> {
     let tag = self.generate_tag();
 
-    //todo refactor
+    //todo
     let stcp_conn = match self.tcp_stream_ex {
       TcpStreamEx::Tls(ref mut x) => x,
       _ => panic!("Unable to deconstruct value")
     };
-    
+
     match stcp_conn.write(format!("{} {}\r\n", tag, cmd).as_bytes()) {
       Ok(x) => {
         let byte_buf: &mut [u8] = &mut [0];

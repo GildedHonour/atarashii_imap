@@ -37,7 +37,6 @@ match Connection::open_secure("imap.gmail.com", SslContext::new(Sslv23).unwrap()
       },
       Err(e) => println!("select cmd error")
     }
-    
   },
   Err(e) => panic!("Unable to open connection")
 }
@@ -45,20 +44,20 @@ match Connection::open_secure("imap.gmail.com", SslContext::new(Sslv23).unwrap()
 ```
 
 ## Commands supported
-* select
-* examine
-* create
-* delete
-* rename
-* subscribe
-* unsubscribe
+* select(mailbox_name: &str)
+* examine(mailbox_name: &str)
+* create(mailbox_name: &str)
+* delete(mailbox_name: &str)
+* rename(current_name: &str, new_name: &str)
+* subscribe(mailbox_name: &str)
+* unsubscribe(mailbox_name: &str)
 * close
 * logout
 * capability
 * fetch
-* copy
-* list
-* examine
+* copy(seq_set: String, mailbox_name: String)
+* list(folder_name: &str, search_pattern: &str)
+* lsub(folder_name: &str, search_pattern: &str)
 * expunge
 * check
 * noop

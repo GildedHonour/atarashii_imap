@@ -33,8 +33,7 @@ fn main() {
         Ok(sel_res) => println!("select cmd result: {}", sel_res),
         _ => panic!("select cmd error")
       };
-      
-    
+
       println!("\r\n");
       match conn.capability() {
         Ok(Response::Ok(data)) => {
