@@ -39,3 +39,8 @@ pub enum Error {
   Connect,
   SendCommand
 }
+
+pub struct ErrorEx {
+  kind: Error,
+  message: String
+}

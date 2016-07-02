@@ -158,39 +158,42 @@ impl Connection {
     Connection::open_secure2(host, sctx, login, password, TcpStreamSecurity::SslTls.port())
   }
 
-  pub fn open_secure2(host: &str, sctx: ssl::SslContext, login: &str, password: &str,
-                      port: u16) -> result::Result<Connection, error::Error> {
+  pub fn open_secure2(host: &str, sctx: ssl::SslContext, login: &str, password: &str, port: u16)
+                      -> result::Result<Connection, error::Error> {
     match TcpStream::connect((host, port)) {
       Ok(tcp_conn) => {
         let mut stcp_conn = ssl::SslStream::connect(&sctx, tcp_conn).unwrap();
-        let byte_buf: &mut [u8] = &mut [0];
-        let mut greet_buf = Vec::new();
-
-        loop {
-          if greet_buf.len() >= NEW_LINE_FULL_CODE_LEN && &greet_buf[greet_buf.len() - NEW_LINE_FULL_CODE_LEN..] == &NEW_LINE_FULL_CODE[..] {
-            break;
-          }
-
-          match stcp_conn.read(byte_buf) {
-            Ok(x) => greet_buf.push(byte_buf[0]),
-            Err(e) => panic!("Read error") //todo
-          };
-        }
-
-        let greeting_re = Regex::new(r"^[*] OK").unwrap();
-        let maybe_greeting = String::from_utf8(greet_buf).unwrap();
-        if !greeting_re.is_match(&maybe_greeting) {
-          return Err(error::Error::Connect)
-        }
-
-        let mut conn = Connection::new(TcpStreamEx::Tls(stcp_conn), host, port);
+        Connection::verify_greeting(&mut stcp_conn);
+        let a = TcpStreamEx::Tls(stcp_conn);
+        let mut conn = Connection::new(a, host, port);
         match conn.login(login, password) {
           Ok(_) => Ok(conn),
           Err(e) => Err(error::Error::Login)
         }
       },
-
       Err(e) => panic!("{}", "Unable to connect")
+    }
+  }
+
+  fn verify_greeting(stcp_conn: &mut ssl::SslStream<TcpStream>) -> () {
+    let byte_buf: &mut [u8] = &mut [0];
+    let mut greet_buf = Vec::new();
+    loop {
+      if greet_buf.len() >= NEW_LINE_FULL_CODE_LEN &&
+        &greet_buf[greet_buf.len() - NEW_LINE_FULL_CODE_LEN..] == &NEW_LINE_FULL_CODE[..] {
+          break;
+        }
+
+      match stcp_conn.read(byte_buf) {
+        Ok(x) => greet_buf.push(byte_buf[0]),
+        Err(e) => panic!("Unable to read greeting data from a socket")
+      };
+    }
+
+    let greeting_re = Regex::new(r"^[*] OK").unwrap();
+    let maybe_greeting = String::from_utf8(greet_buf).unwrap();
+    if !greeting_re.is_match(&maybe_greeting) {
+      panic!("Greeting doesn't have the correct format");
     }
   }
 
