@@ -55,14 +55,14 @@ pub enum Authentication {
   TlsCertificate,
   GssApi,
   Skey,
-  Oauth21
+  Oauth2
 }
 
 //todo
 enum TcpStreamEx {
   Plain(TcpStream),
-  Ssl(ssl::SslStream<TcpStream>),
-  Tls(ssl::SslStream<TcpStream>)
+  StartTls(ssl::SslStream<TcpStream>),
+  SslTls(ssl::SslStream<TcpStream>)
 }
 
 pub enum Response {
@@ -222,14 +222,14 @@ impl Connection {
       Ok(tcp_conn) => {
         let mut stcp_conn = ssl::SslStream::connect(&sctx, tcp_conn).unwrap();
         Connection::verify_greeting(&mut stcp_conn);
-        let a = TcpStreamEx::Tls(stcp_conn);
-        let mut conn = Connection::new(a, host, port);
+        let tcp_strm = TcpStreamEx::SslTls(stcp_conn);
+        let mut conn = Connection::new(tcp_strm, host, port);
         match conn.login(login, password) {
           Ok(_) => Ok(conn),
-          Err(e) => Err(error::Error::Login)
+          Err(_) => Err(error::Error::Login)
         }
       },
-      Err(e) => panic!("{}", "Unable to connect")
+      Err(e) => panic!("{}", format!("Unable to connect: {}", e))
     }
   }
 
@@ -243,7 +243,7 @@ impl Connection {
         }
 
       match stcp_conn.read(byte_buf) {
-        Ok(x) => greet_buf.push(byte_buf[0]),
+        Ok(_) => greet_buf.push(byte_buf[0]),
         Err(e) => panic!("Unable to read greeting data from a socket: {}", e)
       };
     }
@@ -425,8 +425,8 @@ impl Connection {
 
     //todo
     let stcp_conn = match self.tcp_stream_ex {
-      TcpStreamEx::Tls(ref mut x) => x,
-      _ => panic!("Unable to deconstruct value")
+      TcpStreamEx::SslTls(ref mut x) => x,
+      _ => panic!("Unable to deconstruct value the tcp stream variable")
     };
 
     match stcp_conn.write(format!("{} {}\r\n", tag, cmd).as_bytes()) {
