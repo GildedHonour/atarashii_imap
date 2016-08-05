@@ -55,6 +55,6 @@ fn main() {
       };
     },
 
-    Err(e) => panic!("Unable to open connection")
+    Err(_) => panic!("Unable to open connection")
   }
 }

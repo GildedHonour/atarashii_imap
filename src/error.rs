@@ -19,8 +19,6 @@
  *
  */
 
-use std::fmt;
-
 pub enum Error {
   Append,
   Search,
@@ -38,9 +36,4 @@ pub enum Error {
   Generic,
   Connect,
   SendCommand
-}
-
-pub struct ErrorEx {
-  kind: Error,
-  message: String
 }

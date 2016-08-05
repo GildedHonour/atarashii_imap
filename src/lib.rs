@@ -47,19 +47,22 @@ impl TcpStreamSecurity {
   }
 }
 
+pub enum Authentication {
+  NormalPassword,
+  EncryptedPassword,
+  Ntlm,
+  Kerberos,
+  TlsCertificate,
+  GssApi,
+  Skey,
+  Oauth21
+}
+
+//todo
 enum TcpStreamEx {
   Plain(TcpStream),
   Ssl(ssl::SslStream<TcpStream>),
   Tls(ssl::SslStream<TcpStream>)
-}
-
-pub enum Authentication {
-  Normal,
-  EncryptedPassword,
-  Ntlm,
-  Kerberos,
-  GssApi,
-  Skey
 }
 
 pub enum Response {
@@ -68,7 +71,7 @@ pub enum Response {
   Bad(Vec<String>)
 }
 
-pub struct Mailbox {
+pub struct Emailbox {
   pub flags: Vec<String>,
   pub permanent_flags: Vec<String>,
   pub exists_num: u32,
@@ -78,9 +81,9 @@ pub struct Mailbox {
   pub uid_validity: u32
 }
 
-impl Default for Mailbox {
-  fn default() -> Mailbox {
-    Mailbox {
+impl Default for Emailbox {
+  fn default() -> Emailbox {
+    Emailbox {
       flags: vec![],
       permanent_flags: vec![],
       exists_num: 0,
@@ -92,7 +95,7 @@ impl Default for Mailbox {
   }
 }
 
-impl fmt::Display for Mailbox {
+impl fmt::Display for Emailbox {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     write!(f, "Exists: {}\r\nRecent: {}\r\nUnseen: {}\r\nUid validity: {}\r\nUid next: {}\r\nFlags: {}\r\nPermanent flags: {}",
            self.exists_num,
@@ -186,7 +189,7 @@ impl Connection {
 
       match stcp_conn.read(byte_buf) {
         Ok(x) => greet_buf.push(byte_buf[0]),
-        Err(e) => panic!("Unable to read greeting data from a socket")
+        Err(e) => panic!("Unable to read greeting data from a socket: {}", e)
       };
     }
 
@@ -197,8 +200,8 @@ impl Connection {
     }
   }
 
- fn select_generic(&mut self, mailbox_name: &str, cmd: &str) -> Result<Mailbox, error::Error> {
-    match self.exec_cmd(&format!("{} {}", cmd, mailbox_name)) {
+ fn select_generic(&mut self, emailbox_name: &str, cmd: &str) -> Result<Emailbox, error::Error> {
+    match self.exec_cmd(&format!("{} {}", cmd, emailbox_name)) {
       Ok(Response::Ok(data)) => {
         let re_flags = Regex::new(r"FLAGS\s\((.+)\)").unwrap();
         let re_perm_flags = Regex::new(r"\[PERMANENTFLAGS\s\((.+)\)\]").unwrap();
@@ -209,7 +212,7 @@ impl Connection {
         let re_uid_next = Regex::new(r"\[UIDNEXT\s(\d+)\]").unwrap();
         let re_tag_and_res = Regex::new(&format!(r"{}\s(OK|NO|BAD){{1}}", self.get_current_tag())).unwrap();
 
-        let mut scr = Mailbox::default();
+        let mut scr = Emailbox::default();
         for x in data.iter() {
           if re_flags.is_match(&x) {
             let cp = re_flags.captures(&x).unwrap();
@@ -342,11 +345,11 @@ impl Connection {
     self.exec_cmd(&format!("lsub \"{}\" \"{}\"", folder_name, search_pattern))
   }
 
-  pub fn select(&mut self, mailbox_name: &str) -> Result<Mailbox, error::Error> {
+  pub fn select(&mut self, mailbox_name: &str) -> Result<Emailbox, error::Error> {
     self.select_generic(mailbox_name, "select")
   }
 
-  pub fn examine(&mut self, mailbox_name: &str) -> Result<Mailbox, error::Error> {
+  pub fn examine(&mut self, mailbox_name: &str) -> Result<Emailbox, error::Error> {
     self.select_generic(mailbox_name, "examine")
   }
 
@@ -372,7 +375,7 @@ impl Connection {
     };
 
     match stcp_conn.write(format!("{} {}\r\n", tag, cmd).as_bytes()) {
-      Ok(x) => {
+      Ok(_) => {
         let byte_buf: &mut [u8] = &mut [0];
         let mut read_buf: Vec<u8> = Vec::new();
         let regex_str = format!(r"{}\s(OK|NO|BAD){{1}}", tag);
@@ -419,6 +422,11 @@ impl Connection {
   fn get_current_tag(&self) -> String {
     format!("{}_{}", Connection::tag_prefix(), self.tag_sequence_number.get())
   }
+
+  fn starttls(&mut self) -> Result<Response, error::Error> {
+    self.exec_cmd("starttls")
+  }
+
 }
 
 #[cfg(test)]
