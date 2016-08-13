@@ -175,6 +175,13 @@ const NEW_LINE_CODE: u8 = 0x0A;
 const NEW_LINE_FULL_CODE: [u8; 2] = [CARRIAGE_RETURN_CODE, NEW_LINE_CODE];
 const NEW_LINE_FULL_CODE_LEN: usize = 2;
 
+impl fmt::Display for Connection {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "Connection: host: {}, port: {}, tag prefix: {}, tag sequence number: {}",
+           self.host, self.port, Connection::tag_prefix(), self.tag_sequence_number.get())
+  }
+}
+
 impl Connection {
   fn tag_prefix() -> &'static str {
     "TAG"
