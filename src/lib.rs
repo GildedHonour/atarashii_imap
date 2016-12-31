@@ -131,7 +131,6 @@ pub enum ResponseOptional {
   Nonexistent
 }
 
-#[derive(Debug)]
 pub struct Emailbox {
   pub flags: Vec<String>,
   pub permanent_flags: Vec<String>,
@@ -156,7 +155,7 @@ impl Default for Emailbox {
   }
 }
 
-impl fmt::Display for Emailbox {
+impl fmt::Debug for Emailbox {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     write!(f, "Exists: {}\r\nRecent: {}\r\nUnseen: {}\r\nUid validity: {}\r\nUid next: {}\r\nFlags: {}\r\nPermanent flags: {}",
            self.exists_num,
@@ -169,7 +168,6 @@ impl fmt::Display for Emailbox {
   }
 }
 
-#[derive(Debug)]
 pub struct Connection {
   host: String,
   port: u16,
@@ -182,7 +180,7 @@ const NEW_LINE_CODE: u8 = 0x0A;
 const NEW_LINE_FULL_CODE: [u8; 2] = [CARRIAGE_RETURN_CODE, NEW_LINE_CODE];
 const NEW_LINE_FULL_CODE_LEN: usize = 2;
 
-impl fmt::Display for Connection {
+impl fmt::Debug for Connection {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     write!(f, "Connection: host: {}, port: {}, tag prefix: {}, tag sequence number: {}",
            self.host, self.port, Connection::tag_prefix(), self.tag_sequence_number.get())
