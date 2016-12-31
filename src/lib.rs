@@ -32,6 +32,7 @@ use std::fmt;
 
 mod error;
 
+#[derive(Debug)]
 pub enum TcpStreamSecurity {
   Plain,
   StartTls,
@@ -47,6 +48,7 @@ impl TcpStreamSecurity {
   }
 }
 
+#[derive(Debug)]
 pub enum Authentication {
   NormalPassword,
   EncryptedPassword,
@@ -59,18 +61,21 @@ pub enum Authentication {
 }
 
 //todo
+#[derive(Debug)]
 enum TcpStreamEx {
   Plain(TcpStream),
   StartTls(ssl::SslStream<TcpStream>),
   SslTls(ssl::SslStream<TcpStream>)
 }
 
+#[derive(Debug)]
 pub enum Response {
   Ok(Vec<String>),
   No(Vec<String>),
   Bad(Vec<String>)
 }
 
+#[derive(Debug)]
 pub enum ResponseOptional {
   Referral,
   Alert,
@@ -126,6 +131,7 @@ pub enum ResponseOptional {
   Nonexistent
 }
 
+#[derive(Debug)]
 pub struct Emailbox {
   pub flags: Vec<String>,
   pub permanent_flags: Vec<String>,
@@ -163,6 +169,7 @@ impl fmt::Display for Emailbox {
   }
 }
 
+#[derive(Debug)]
 pub struct Connection {
   host: String,
   port: u16,
