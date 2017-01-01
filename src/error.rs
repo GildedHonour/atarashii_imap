@@ -19,6 +19,7 @@
  *
  */
 
+#[derive(Debug)]
 pub enum Error {
   Append,
   Search,
