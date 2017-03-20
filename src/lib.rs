@@ -29,6 +29,7 @@ use openssl::ssl;
 use std::result;
 use std::cell::Cell;
 use std::fmt;
+use openssl::ssl::{SslMethod, SslConnectorBuilder};
 
 mod error;
 
@@ -126,7 +127,7 @@ pub enum ResponseOptional {
   Nonexistent
 }
 
-pub struct Emailbox {
+pub struct EmailBox {
   pub flags: Vec<String>,
   pub permanent_flags: Vec<String>,
   pub exists_num: u32,
@@ -136,9 +137,9 @@ pub struct Emailbox {
   pub uid_validity: u32
 }
 
-impl Default for Emailbox {
-  fn default() -> Emailbox {
-    Emailbox {
+impl Default for EmailBox {
+  fn default() -> EmailBox {
+    EmailBox {
       flags: vec![],
       permanent_flags: vec![],
       exists_num: 0,
@@ -150,7 +151,7 @@ impl Default for Emailbox {
   }
 }
 
-impl fmt::Display for Emailbox {
+impl fmt::Display for EmailBox {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     write!(f, "Exists: {}\r\nRecent: {}\r\nUnseen: {}\r\nUid validity: {}\r\nUid next: {}\r\nFlags: {}\r\nPermanent flags: {}",
            self.exists_num,
@@ -219,15 +220,16 @@ impl Connection {
     }
   }
 
-  pub fn open_secure(host: &str, sctx: ssl::SslContext, login: &str, password: &str) -> result::Result<Connection, error::Error> {
-    Connection::open_secure2(host, sctx, login, password, TcpStreamSecurity::SslTls.port())
+  pub fn open_secure(host: &str, login: &str, password: &str) -> result::Result<Connection, error::Error> {
+    Connection::open_secure2(host, login, password, TcpStreamSecurity::SslTls.port())
   }
 
-  pub fn open_secure2(host: &str, sctx: ssl::SslContext, login: &str, password: &str, port: u16)
+  pub fn open_secure2(host: &str, login: &str, password: &str, port: u16)
                       -> result::Result<Connection, error::Error> {
     match TcpStream::connect((host, port)) {
       Ok(tcp_conn) => {
-        let mut stcp_conn = ssl::SslStream::connect(&sctx, tcp_conn).unwrap();
+        let connector = SslConnectorBuilder::new(SslMethod::tls()).unwrap().build();
+        let mut stcp_conn = connector.connect(host, tcp_conn).unwrap();
         Connection::verify_greeting(&mut stcp_conn);
         let tcp_strm = TcpStreamEx::SslTls(stcp_conn);
         let mut conn = Connection::new(tcp_strm, host, port);
@@ -262,7 +264,7 @@ impl Connection {
     }
   }
 
- fn select_generic(&mut self, emailbox_name: &str, cmd: &str) -> Result<Emailbox, error::Error> {
+ fn select_generic(&mut self, emailbox_name: &str, cmd: &str) -> Result<EmailBox, error::Error> {
     match self.exec_cmd(&format!("{} {}", cmd, emailbox_name)) {
       Ok(Response::Ok(data)) => {
         let re_flags = Regex::new(r"FLAGS\s\((.+)\)").unwrap();
@@ -274,45 +276,45 @@ impl Connection {
         let re_uid_next = Regex::new(r"\[UIDNEXT\s(\d+)\]").unwrap();
         let re_tag_and_res = Regex::new(&format!(r"{}\s(OK|NO|BAD){{1}}", self.get_current_tag())).unwrap();
 
-        let mut scr = Emailbox::default();
+        let mut scr = EmailBox::default();
         for x in data.iter() {
           if re_flags.is_match(&x) {
             let cp = re_flags.captures(&x).unwrap();
-            let flg1 = cp.at(1).unwrap().to_string();
+            let flg1 = cp[1].to_string();
             let flg2: Vec<&str> = flg1.split(" ").collect();
             scr.flags = flg2.iter().map(|x| x.to_string()).collect();
           }
 
           if re_perm_flags.is_match(&x) {
             let cp = re_perm_flags.captures(&x).unwrap();
-            let flg1 = cp.at(1).unwrap().to_string();
+            let flg1 = cp[1].to_string();
             let flg2: Vec<&str> = flg1.split(" ").collect();
             scr.permanent_flags = flg2.iter().map(|x| x.to_string()).collect();
           }
 
           if re_exists_num.is_match(&x) {
             let cp = re_exists_num.captures(&x).unwrap();
-            scr.exists_num = cp.at(1).unwrap().parse::<u32>().unwrap();
+            scr.exists_num = cp[1].parse::<u32>().unwrap();
           }
 
           if re_recent_num.is_match(&x) {
             let cp = re_recent_num.captures(&x).unwrap();
-            scr.recent_num = cp.at(1).unwrap().parse::<u32>().unwrap();
+            scr.recent_num = cp[1].parse::<u32>().unwrap();
           }
 
           if re_uid_next.is_match(&x) {
             let cp = re_uid_next.captures(&x).unwrap();
-            scr.uid_next = cp.at(1).unwrap().parse::<u32>().unwrap();
+            scr.uid_next = cp[1].parse::<u32>().unwrap();
           }
 
           if re_uid_validity.is_match(&x) {
             let cp = re_uid_validity.captures(&x).unwrap();
-            scr.uid_validity = cp.at(1).unwrap().parse::<u32>().unwrap();
+            scr.uid_validity = cp[1].parse::<u32>().unwrap();
           }
 
           if re_unseen_num.is_match(&x) {
             let cp = re_unseen_num.captures(&x).unwrap();
-            scr.unseen_num = cp.at(1).unwrap().parse::<u32>().unwrap();
+            scr.unseen_num = cp[1].parse::<u32>().unwrap();
           }
         }
 
@@ -368,7 +370,7 @@ impl Connection {
           }
         }
 
-        Ok(Response::Bad(vec!["The server's response doesn't contain 'BYE'".to_string()]))
+        Ok(Response::Bad(vec!["The response of the server doesn't contain 'BYE'".to_string()]))
       },
 
       _ => Ok(Response::Bad(Vec::default()))
@@ -407,11 +409,11 @@ impl Connection {
     self.exec_cmd(&format!("lsub \"{}\" \"{}\"", folder_name, search_pattern))
   }
 
-  pub fn select(&mut self, mailbox_name: &str) -> Result<Emailbox, error::Error> {
+  pub fn select(&mut self, mailbox_name: &str) -> Result<EmailBox, error::Error> {
     self.select_generic(mailbox_name, "select")
   }
 
-  pub fn examine(&mut self, mailbox_name: &str) -> Result<Emailbox, error::Error> {
+  pub fn examine(&mut self, mailbox_name: &str) -> Result<EmailBox, error::Error> {
     self.select_generic(mailbox_name, "examine")
   }
 
@@ -460,10 +462,10 @@ impl Connection {
         let resp = String::from_utf8(read_buf.clone()).unwrap();
         let caps = cmd_resp_re.captures(&resp).unwrap();
         let data = resp.split("\r\n").map(|x| x.to_string()).collect();
-        Ok(match caps.at(1) {
-          Some("OK") => Response::Ok(data),
-          Some("NO") => Response::No(data),
-          Some("BAD") => Response::Bad(data),
+        Ok(match &caps[1] {
+          "OK" => Response::Ok(data),
+          "NO" => Response::No(data),
+          "BAD" => Response::Bad(data),
           _ => panic!("Invalid response")
         })
       },
@@ -485,7 +487,7 @@ impl Connection {
     format!("{}_{}", Connection::tag_prefix(), self.tag_sequence_number.get())
   }
 
-  fn starttls(&mut self) -> Result<Response, error::Error> {
+  fn start_tls(&mut self) -> Result<Response, error::Error> {
     self.exec_cmd("starttls")
   }
 

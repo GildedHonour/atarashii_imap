@@ -11,8 +11,8 @@ license = "Apache-2.0"
 keywords = ["imap", "email", "mail"]
 
 [dependencies]
-openssl = "0.7.10"
-regex = "0.1.69"
+openssl = "0.9.8"
+regex = "0.2.1"
 
 [lib]
 name = "atarashii_imap"

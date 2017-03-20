@@ -24,10 +24,10 @@ extern crate openssl;
 
 use atarashii_imap::{Connection, Response};
 use openssl::ssl::{SslContext, SslStream};
-use openssl::ssl::SslMethod::Sslv23;
+use openssl::ssl::{SslMethod, SslConnectorBuilder};
 
 fn main() {
-  match Connection::open_secure("imap.gmail.com", SslContext::new(Sslv23).unwrap(), "gmail_login@gmail.com", "password") {
+  match Connection::open_secure("imap.gmail.com", "gmail_login@gmail.com", "password") {
     Ok(mut conn) => {
       match conn.select("inbox") {
         Ok(sel_res) => println!("select cmd result: {}", sel_res),
