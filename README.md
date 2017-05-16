@@ -15,7 +15,7 @@ Put this in your `Cargo.toml`:
 
 ```toml
 [dependencies]
-atarashii_imap = "0.2.1"
+atarashii_imap = "<current version of atarashii_imap>"
 ```
 
 

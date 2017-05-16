@@ -1,17 +1,19 @@
 [package]
 name = "atarashii_imap"
 version = "0.3.0"
-authors = ["Alex Maslakov <me@gildedhonour.com>"]
+authors = ["Alex Maslakov <me@gildedhonour.com>, <gilded.honour@protonmail.com>"]
+license = "Apache-2.0"
+
 repository = "https://github.com/GildedHonour/atarashii_imap"
 homepage = "https://github.com/GildedHonour/atarashii_imap"
 documentation = "https://github.com/GildedHonour/atarashii_imap"
+
 description = "IMAP client written in Rust"
-readme = "README.md"
-license = "Apache-2.0"
 keywords = ["imap", "email", "mail"]
+readme = "README.md"
 
 [dependencies]
-openssl = "0.9.8"
+openssl = "0.9.12"
 regex = "0.2.1"
 
 [lib]
