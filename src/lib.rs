@@ -19,17 +19,20 @@
  *
  */
 
-extern crate openssl;
+extern crate native_tls;
 extern crate regex;
 
 use regex::Regex;
 use std::net::TcpStream;
 use std::io::{Read, Write};
-use openssl::ssl;
 use std::result;
 use std::cell::Cell;
 use std::fmt;
-use openssl::ssl::{SslMethod, SslConnectorBuilder};
+
+
+//use native_tls::ssl;
+//use native_tls::ssl::{SslMethod, SslConnectorBuilder};
+use native_tls::{TlsConnector, TlsConnectorBuilder};
 
 mod error;
 
@@ -228,7 +231,7 @@ impl Connection {
                       -> result::Result<Connection, error::Error> {
     match TcpStream::connect((host, port)) {
       Ok(tcp_conn) => {
-        let connector = SslConnectorBuilder::new(SslMethod::tls()).unwrap().build();
+        let connector = TslConnectorBuilder::new(SslMethod::tls()).unwrap().build();
         let mut stcp_conn = connector.connect(host, tcp_conn).unwrap();
         Connection::verify_greeting(&mut stcp_conn);
         let tcp_strm = TcpStreamEx::SslTls(stcp_conn);
