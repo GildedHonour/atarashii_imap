@@ -24,12 +24,11 @@ atarashii_imap = "<current version of atarashii_imap>"
 extern crate atarashii_imap;
 extern crate openssl;
 
-use atarashii_imap::{Connection, Response};
-use openssl::ssl::{SslContext, SslStream};
-use openssl::ssl::SslMethod::Sslv23;
-
+use atarashii_imap::{Connection, Response, SslMode};
+use native_tls::{TlsConnector, TlsConnectorBuilder, TlsStream, SslMethod, SslConnectorBuilder};
 //.......
-match Connection::open_secure("imap.gmail.com", SslContext::new(Sslv23).unwrap(), "gmail_login@gmail.com", "password") {
+
+match Connection::open("imap.gmail.com", "gmail_login@gmail.com", "password", SslMode::Implicit) {
   Ok(mut conn) => {
     match conn.select("inbox") {
       Ok(sel_res) => {
