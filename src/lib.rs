@@ -158,8 +158,6 @@ impl fmt::Display for EmailBox {
 
 pub struct Connection {
     host: String,
-    port: u16,
-    tcp_stream_ex: TcpStreamEx,
     tag_sequence_number: Cell<u32>
 }
 
@@ -180,8 +178,6 @@ impl Connection {
     pub fn open(host: &str, login: &str, password: &str, ssl_mode: SslMode)
                 -> result::Result<Connection, error::Error> {
 
-        let con = Connection { port: port, host: host.to_string(), tcp_stream_ex: tcps_ex,
-                               tag_sequence_number: Cell::new(1) };
         match ssl_mode {
             SslMode::None => {
                 match TcpStream::connect((host, SslMode::None.port())) {
@@ -189,10 +185,11 @@ impl Connection {
                         let mut str_buf = String::new();
                         match tcp_conn.read_to_string(&mut str_buf) {
                             Ok(bytes_read) => {
-                                //todo if OK exists then success
+                                //TODO: if OK exists then success
                                 //read greating
 
-                                let mut conn = Connection::new(TcpStreamEx::Plain(tcp_conn), host, port);
+                                let mut conn = Connection { port: port, host: host.to_string(),
+                                                            tag_sequence_number: Cell::new(1) };
                                 match conn.login(login, password) {
                                     Ok(login_res) => unimplemented!(),
                                     Err(e) => unimplemented!()
@@ -210,11 +207,11 @@ impl Connection {
             SslMode::Implicit => {
                 let connector = TlsConnector::builder().unwrap().build().unwrap();
 
-                //todo - match
+                //todo:  match
                 let pl_stream = TcpStream::connect(format!("{}:{}", host, SslMode::None.port())).unwrap();
-                //todo - match
-                let mut stream = connector.connect(format!("{}:{}", host, SslMode::Implicit.port()),
-                                                   pl_stream).unwrap();
+
+                //todo:  match
+                let mut stream = connector.connect(host, pl_stream).unwrap();
 
 
 
@@ -222,14 +219,18 @@ impl Connection {
 
             },
 
+            // todo
             SslMode::Explicit => {
                 match TcpStream::connect((host, SslMode::Explicit.port())) {
                     Ok(tcp_conn) => {
-                        let connector = TslConnectorBuilder::new(SslMethod::tls()).unwrap().build();
+                        let connector = TlsConnector::builder().unwrap().build().unwrap();
                         let mut stcp_conn = connector.connect(host, tcp_conn).unwrap();
                         Connection::verify_greeting(&mut stcp_conn);
-                        let tcp_strm = TcpStreamEx::SslTls(stcp_conn);
-                        let mut conn = Connection::new(tcp_strm, host, port);
+
+
+
+                        let mut conn = Connection { port: port, host: host.to_string(),
+                                                    tag_sequence_number: Cell::new(1) };
                         match conn.login(login, password) {
                             Ok(_) => Ok(conn),
                             Err(_) => Err(error::Error::Login)
@@ -339,6 +340,8 @@ impl Connection {
              */
         }
     }
+
+    //commands
 
     pub fn create(&mut self, mailbox_name: &str) -> Result<Response, error::Error> {
         self.exec_cmd(&format!("create {}", mailbox_name))
@@ -480,6 +483,13 @@ impl Connection {
         self.exec_cmd(&format!("LOGIN {} {}", login, password))
     }
 
+    fn start_tls(&mut self) -> Result<Response, error::Error> {
+        self.exec_cmd("starttls")
+    }
+
+    //end commands
+
+
     fn generate_tag(&self) -> String {
         let v = self.tag_sequence_number.get();
         self.tag_sequence_number.set(v + 1);
@@ -489,11 +499,6 @@ impl Connection {
     fn get_current_tag(&self) -> String {
         format!("{}_{}", Connection::tag_prefix(), self.tag_sequence_number.get())
     }
-
-    fn start_tls(&mut self) -> Result<Response, error::Error> {
-        self.exec_cmd("starttls")
-    }
-
 }
 
 #[cfg(test)]
