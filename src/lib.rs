@@ -175,25 +175,21 @@ impl fmt::Display for Connection {
 
 //todo
 impl Connection {
-    pub fn open(host: &str, login: &str, password: &str, ssl_mode: SslMode)
+    pub fn open(host: &str, ssl_mode: SslMode, credentials: (&str, &str))
                 -> result::Result<Connection, error::Error> {
 
-        match ssl_mode {
+        let mut conn = match ssl_mode {
             SslMode::None => {
                 match TcpStream::connect((host, SslMode::None.port())) {
-                    Ok(mut tcp_conn) => {
+                    Ok(mut unsec_conn) => {
                         let mut str_buf = String::new();
-                        match tcp_conn.read_to_string(&mut str_buf) {
+                        match unsec_conn.read_to_string(&mut str_buf) {
                             Ok(bytes_read) => {
                                 //TODO: if OK exists then success
                                 //read greating
 
-                                let mut conn = Connection { port: port, host: host.to_string(),
-                                                            tag_sequence_number: Cell::new(1) };
-                                match conn.login(login, password) {
-                                    Ok(login_res) => unimplemented!(),
-                                    Err(e) => unimplemented!()
-                                }
+                                Connection { port: port, host: host.to_string(),
+                                             tag_sequence_number: Cell::new(1) };
                             },
 
                             Err(e) => unimplemented!()
@@ -212,33 +208,35 @@ impl Connection {
 
                 //todo:  match
                 let mut stream = connector.connect(host, pl_stream).unwrap();
-
-
-
-
-
+                Connection { host: host.to_string(), tag_sequence_number: Cell::new(1) };
             },
 
             // todo
             SslMode::Explicit => {
                 match TcpStream::connect((host, SslMode::Explicit.port())) {
-                    Ok(tcp_conn) => {
+                    Ok(unsec_conn) => {
                         let connector = TlsConnector::builder().unwrap().build().unwrap();
-                        let mut stcp_conn = connector.connect(host, tcp_conn).unwrap();
-                        Connection::verify_greeting(&mut stcp_conn);
+                        let mut sec_conn = connector.connect(host, unsec_conn).unwrap();
+                        Connection::verify_greeting(&mut sec_conn);
 
 
 
+                        //todo
+                        //match
+                        let tls_cmd = start_tls(conn);
                         let mut conn = Connection { port: port, host: host.to_string(),
                                                     tag_sequence_number: Cell::new(1) };
-                        match conn.login(login, password) {
-                            Ok(_) => Ok(conn),
-                            Err(_) => Err(error::Error::Login)
-                        }
                     },
                     Err(e) => panic!("{}", format!("Unable to connect: {}", e))
                 }
             }
+        }
+
+
+        //todo
+        match conn.login(credentials) {
+            Ok(login_res) => Ok(conn),
+            Err(e) => Err(error::Error::Login)
         }
     }
 
@@ -479,8 +477,9 @@ impl Connection {
         }
     }
 
-    fn login(&mut self, login: &str, password: &str) -> result::Result<Response, error::Error> {
-        self.exec_cmd(&format!("LOGIN {} {}", login, password))
+    fn login(&mut self, credentials: (&str, &str)) -> result::Result<Response, error::Error> {
+        let (usr_lgn, pass) = credentials;
+        self.exec_cmd(&format!("LOGIN {} {}", usr_lgn, pass))
     }
 
     fn start_tls(&mut self) -> Result<Response, error::Error> {
