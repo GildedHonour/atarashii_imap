@@ -28,7 +28,7 @@ use std::io::{Read, Write};
 use std::result;
 use std::cell::Cell;
 use std::fmt;
-use native_tls::{TlsConnector, TlsConnectorBuilder, TlsStream, SslMethod, SslConnectorBuilder};
+use native_tls::{TlsConnector, TlsConnectorBuilder, TlsStream};
 
 mod error;
 
@@ -175,7 +175,7 @@ impl fmt::Display for Connection {
 }
 
 //todo
-impl Connection {
+impl<T: Read + Write> Connection<T> {
     pub fn open(host: &str, ssl_mode: SslMode, credentials: (&str, &str))
                 -> result::Result<Connection, error::Error> {
 
@@ -191,11 +191,11 @@ impl Connection {
 
                             },
 
-                            Err(e) => unimplemented!()
+                            Err(e) => panic!()
                         }
                     },
 
-                    Err(e) => unimplemented!()
+                    Err(e) => panic!()
                 }
             },
 
@@ -210,32 +210,29 @@ impl Connection {
             SslMode::Explicit => {
                 match TcpStream::connect((host, SslMode::Explicit.port())) {
                     Ok(unsec_conn) => {
-                        let connector = TlsConnector::builder().unwrap().build().unwrap();
-
-                        //return TlsStream
-                        let mut sec_conn = connector.connect(host, unsec_conn).unwrap();
                         Connection::verify_greeting(&mut sec_conn);
 
 
 
                         //todo
                         //match
-                        let tls_cmd = start_tls(conn);
+                        let tls_cmd = start_tls(unsec_conn);
+                        let connector = TlsConnector::builder().unwrap().build().unwrap();
+                        let mut sec_conn = connector.connect(host, unsec_conn).unwrap();
                     },
                     Err(e) => panic!("{}", format!("Unable to connect: {}", e))
                 }
             }
-        }
+        };
 
 
         //todo
         match conn.login(credentials) {
-            Ok(login_res) => Ok(conn),
+            Ok(login_res) => Ok(Connection{ host: host.to_string(),
+                                            tag_sequence_number: Cell::new(1), stream: conn}),
+
             Err(e) => Err(error::Error::Login)
         }
-
-
-        Connection { host: host.to_string(), tag_sequence_number: Cell::new(1) };
     }
 
     fn tag_prefix() -> &'static str {
@@ -265,7 +262,7 @@ impl Connection {
     }
 
     fn select_generic(&mut self, emailbox_name: &str, cmd: &str) -> Result<EmailBox, error::Error> {
-        match self.exec_cmd(&format!("{} {}", cmd, emailbox_name)) {
+        match self.execute_command(&format!("{} {}", cmd, emailbox_name)) {
             Ok(Response::Ok(data)) => {
                 let re_flags = Regex::new(r"FLAGS\s\((.+)\)").unwrap();
                 let re_perm_flags = Regex::new(r"\[PERMANENTFLAGS\s\((.+)\)\]").unwrap();
@@ -340,31 +337,31 @@ impl Connection {
     //commands
 
     pub fn create(&mut self, mailbox_name: &str) -> Result<Response, error::Error> {
-        self.exec_cmd(&format!("create {}", mailbox_name))
+        self.execute_command(&format!("create {}", mailbox_name))
     }
 
     pub fn delete(&mut self, mailbox_name: &str) -> Result<Response, error::Error> {
-        self.exec_cmd(&format!("delete {}", mailbox_name))
+        self.execute_command(&format!("delete {}", mailbox_name))
     }
 
     pub fn rename(&mut self, current_name: &str, new_name: &str) -> Result<Response, error::Error> {
-        self.exec_cmd(&format!("rename {} {}", current_name, new_name))
+        self.execute_command(&format!("rename {} {}", current_name, new_name))
     }
 
     pub fn subscribe(&mut self, mailbox_name: &str) -> Result<Response, error::Error> {
-        self.exec_cmd(&format!("subscribe {}", mailbox_name))
+        self.execute_command(&format!("subscribe {}", mailbox_name))
     }
 
     pub fn unsubscribe(&mut self, mailbox_name: &str) -> Result<Response, error::Error> {
-        self.exec_cmd(&format!("unsubscribe {}", mailbox_name))
+        self.execute_command(&format!("unsubscribe {}", mailbox_name))
     }
 
     pub fn close(&mut self) -> Result<Response, error::Error> {
-        self.exec_cmd(&"close")
+        self.execute_command(&"close")
     }
 
     pub fn logout(&mut self) -> Result<Response, error::Error> {
-        match self.exec_cmd(&"logout") {
+        match self.execute_command(&"logout") {
             Ok(Response::Ok(data)) => {
                 for x in data.iter() {
                     if x.contains("BYE") {
@@ -380,15 +377,15 @@ impl Connection {
     }
 
     pub fn capability(&mut self) -> Result<Response, error::Error> {
-        self.exec_cmd(&"capability") //todo -- parse response, remove redundant stuff
+        self.execute_command(&"capability") //todo -- parse response, remove redundant stuff
     }
 
     pub fn fetch(&mut self, seq_set: &str, message_data_query: &str) -> Result<Response, error::Error> {
-        self.exec_cmd(&format!("fetch {} {}", seq_set, message_data_query))
+        self.execute_command(&format!("fetch {} {}", seq_set, message_data_query))
     }
 
     pub fn copy(&mut self, seq_set: String, mailbox_name: String) -> Result<Response, error::Error> {
-        self.exec_cmd (&format!("copy {} {}", seq_set, mailbox_name))
+        self.execute_command (&format!("copy {} {}", seq_set, mailbox_name))
     }
 
     pub fn list_all(&mut self) -> Result<Response, error::Error> {
@@ -404,11 +401,11 @@ impl Connection {
     }
 
     pub fn list(&mut self, folder_name: &str, search_pattern: &str) -> Result<Response, error::Error> {
-        self.exec_cmd(&format!("list \"{}\" \"{}\"", folder_name, search_pattern))
+        self.execute_command(&format!("list \"{}\" \"{}\"", folder_name, search_pattern))
     }
 
     pub fn lsub(&mut self, folder_name: &str, search_pattern: &str) -> Result<Response, error::Error> {
-        self.exec_cmd(&format!("lsub \"{}\" \"{}\"", folder_name, search_pattern))
+        self.execute_command(&format!("lsub \"{}\" \"{}\"", folder_name, search_pattern))
     }
 
     pub fn select(&mut self, mailbox_name: &str) -> Result<EmailBox, error::Error> {
@@ -420,27 +417,20 @@ impl Connection {
     }
 
     pub fn expunge(&mut self) -> Result<Response, error::Error> {
-        self.exec_cmd(&"expunge")
+        self.execute_command(&"expunge")
     }
 
     pub fn check(&mut self) -> Result<Response, error::Error> {
-        self.exec_cmd(&"check")
+        self.execute_command(&"check")
     }
 
     pub fn noop(&mut self) -> Result<Response, error::Error> {
-        self.exec_cmd(&"noop")
+        self.execute_command(&"noop")
     }
 
-    fn exec_cmd(&mut self, cmd: &str) -> Result<Response, error::Error> {
+    fn execute_command(&mut self, cmd: &str) -> Result<Response, error::Error> {
         let tag = self.generate_tag();
-
-        //todo
-        let stcp_conn = match self.tcp_stream_ex {
-            TcpStreamEx::SslTls(ref mut x) => x,
-            _ => panic!("Unable to deconstruct value the tcp stream variable")
-        };
-
-        match stcp_conn.write(format!("{} {}\r\n", tag, cmd).as_bytes()) {
+        match self.stream.write(format!("{} {}\r\n", tag, cmd).as_bytes()) {
             Ok(_) => {
                 let byte_buf: &mut [u8] = &mut [0];
                 let mut read_buf: Vec<u8> = Vec::new();
@@ -479,11 +469,11 @@ impl Connection {
 
     fn login(&mut self, credentials: (&str, &str)) -> result::Result<Response, error::Error> {
         let (usr_lgn, pass) = credentials;
-        self.exec_cmd(&format!("LOGIN {} {}", usr_lgn, pass))
+        self.execute_command(&format!("LOGIN {} {}", usr_lgn, pass))
     }
 
     fn start_tls(&mut self) -> Result<Response, error::Error> {
-        self.exec_cmd("starttls")
+        self.execute_command("starttls")
     }
 
     //end commands
