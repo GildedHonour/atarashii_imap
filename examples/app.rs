@@ -27,7 +27,8 @@ use openssl::ssl::{SslContext, SslStream};
 use openssl::ssl::{SslMethod, SslConnectorBuilder};
 
 fn main() {
-  match Connection::open_secure("imap.gmail.com", "gmail_login@gmail.com", "password") {
+  //match Connection::open_secure("imap.gmail.com", "gmail_login@gmail.com", "password") {
+  match Connection::open_secure("imap.gmail.com", "gildedhonour@gmail.com", """26p9VfamA^X`ys"L""") {
     Ok(mut conn) => {
       match conn.select("inbox") {
         Ok(sel_res) => println!("select cmd result: {}", sel_res),

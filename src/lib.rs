@@ -156,9 +156,10 @@ impl fmt::Display for EmailBox {
     }
 }
 
-pub struct Connection {
+pub struct Connection<T: Read + Write> {
     host: String,
-    tag_sequence_number: Cell<u32>
+    tag_sequence_number: Cell<u32>,
+    stream: T
 }
 
 const CARRIAGE_RETURN_CODE: u8 = 0x0D;
@@ -168,8 +169,8 @@ const NEW_LINE_FULL_CODE_LEN: usize = 2;
 
 impl fmt::Display for Connection {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Connection: host: {}, port: {}, tag prefix: {}, tag sequence number: {}",
-               self.host, self.port, Connection::tag_prefix(), self.tag_sequence_number.get())
+        write!(f, "Connection: host: {}, tag prefix: {}, tag sequence number: {}",
+               self.host, Connection::tag_prefix(), self.tag_sequence_number.get())
     }
 }
 
@@ -188,8 +189,6 @@ impl Connection {
                                 //TODO: if OK exists then success
                                 //read greating
 
-                                Connection { port: port, host: host.to_string(),
-                                             tag_sequence_number: Cell::new(1) };
                             },
 
                             Err(e) => unimplemented!()
@@ -202,13 +201,9 @@ impl Connection {
 
             SslMode::Implicit => {
                 let connector = TlsConnector::builder().unwrap().build().unwrap();
-
                 //todo:  match
                 let pl_stream = TcpStream::connect(format!("{}:{}", host, SslMode::None.port())).unwrap();
-
-                //todo:  match
-                let mut stream = connector.connect(host, pl_stream).unwrap();
-                Connection { host: host.to_string(), tag_sequence_number: Cell::new(1) };
+                connector.connect(host, pl_stream).unwrap();
             },
 
             // todo
@@ -216,6 +211,8 @@ impl Connection {
                 match TcpStream::connect((host, SslMode::Explicit.port())) {
                     Ok(unsec_conn) => {
                         let connector = TlsConnector::builder().unwrap().build().unwrap();
+
+                        //return TlsStream
                         let mut sec_conn = connector.connect(host, unsec_conn).unwrap();
                         Connection::verify_greeting(&mut sec_conn);
 
@@ -224,8 +221,6 @@ impl Connection {
                         //todo
                         //match
                         let tls_cmd = start_tls(conn);
-                        let mut conn = Connection { port: port, host: host.to_string(),
-                                                    tag_sequence_number: Cell::new(1) };
                     },
                     Err(e) => panic!("{}", format!("Unable to connect: {}", e))
                 }
@@ -238,6 +233,9 @@ impl Connection {
             Ok(login_res) => Ok(conn),
             Err(e) => Err(error::Error::Login)
         }
+
+
+        Connection { host: host.to_string(), tag_sequence_number: Cell::new(1) };
     }
 
     fn tag_prefix() -> &'static str {
@@ -449,7 +447,9 @@ impl Connection {
                 let regex_str = format!(r"{}\s(OK|NO|BAD){{1}}", tag);
                 let cmd_resp_re = Regex::new(&regex_str).unwrap();
                 loop {
-                    if read_buf.len() >= NEW_LINE_FULL_CODE.len() && &read_buf[read_buf.len() - NEW_LINE_FULL_CODE.len()..] == &NEW_LINE_FULL_CODE[..] {
+                    if read_buf.len() >= NEW_LINE_FULL_CODE.len() &&
+                        &read_buf[read_buf.len() - NEW_LINE_FULL_CODE.len()..] ==
+                        &NEW_LINE_FULL_CODE[..] {
                         //todo
                         let m1 = String::from_utf8(read_buf.clone()).unwrap();
                         if cmd_resp_re.is_match(&m1) {
