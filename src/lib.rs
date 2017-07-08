@@ -156,6 +156,11 @@ impl fmt::Display for EmailBox {
     }
 }
 
+/*
+trait NetworkStream: Read + Write {}
+impl<T: Read + Write> NetworkStream for T {}
+*/
+
 pub struct Connection<T: Read + Write> {
     host: String,
     tag_sequence_number: Cell<u32>,
@@ -210,7 +215,7 @@ impl<T: Read + Write> Connection<T> {
             SslMode::Explicit => {
                 match TcpStream::connect((host, SslMode::Explicit.port())) {
                     Ok(unsec_conn) => {
-                        Connection::verify_greeting(&mut sec_conn);
+                        Connection::verify_greeting(&mut unsec_conn);
 
 
 
@@ -239,16 +244,17 @@ impl<T: Read + Write> Connection<T> {
         "TAG"
     }
 
-    fn verify_greeting!(stcp_conn: &mut ssl::SslStream<TcpStream>) {
+    fn verify_greeting(&mut net_stream: T) {
         let byte_buf: &mut [u8] = &mut [0];
         let mut greet_buf = Vec::new();
         loop {
             if greet_buf.len() >= NEW_LINE_FULL_CODE_LEN &&
-                &greet_buf[greet_buf.len() - NEW_LINE_FULL_CODE_LEN..] == &NEW_LINE_FULL_CODE[..] {
+                &greet_buf[greet_buf.len() - NEW_LINE_FULL_CODE_LEN..] ==
+                &NEW_LINE_FULL_CODE[..] {
                     break;
                 }
 
-            match stcp_conn.read(byte_buf) {
+            match net_stream.read(byte_buf) {
                 Ok(_) => greet_buf.push(byte_buf[0]),
                 Err(e) => panic!("Unable to read greeting data from a socket: {}", e)
             };
@@ -447,9 +453,9 @@ impl<T: Read + Write> Connection<T> {
                         }
                     }
 
-                    match stcp_conn.read(byte_buf) {
+                    match self.stream.read(byte_buf) {
                         Ok(_) => read_buf.push(byte_buf[0]),
-                        Err(e) => println!("Error reading bytes from the socket: {}", e) //todo
+                        Err(e) => panic!("Error reading bytes from the socket: {}", e)
                     }
                 }
 
