@@ -34,8 +34,10 @@ mod error;
 
 pub enum SslMode {
     None,
-    Explicit,
-    Implicit
+    Auto,
+    SslOnConnect,
+    StartTls,
+    StartTlsIfSupported
 }
 
 impl SslMode {
@@ -181,8 +183,7 @@ impl fmt::Display for Connection {
 
 //todo
 impl<T: Read + Write> Connection<T> {
-    pub fn open(host: &str, ssl_mode: SslMode, credentials: (&str, &str))
-                -> result::Result<Connection, error::Error> {
+    pub fn connect(host: &str, ssl_mode: SslMode) -> result::Result<Connection, error::Error> {
 
         let mut conn = match ssl_mode {
             SslMode::None => {
