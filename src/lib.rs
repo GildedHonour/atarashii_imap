@@ -60,6 +60,9 @@ pub enum Authentication {
     Oauth2
 }
 
+pub enum SaslMechanism {
+}
+
 pub enum Response {
     Ok(Vec<String>),
     No(Vec<String>),
@@ -158,12 +161,7 @@ impl fmt::Display for EmailBox {
     }
 }
 
-/*
-trait NetworkStream: Read + Write {}
-impl<T: Read + Write> NetworkStream for T {}
-*/
-
-pub struct Connection<T: Read + Write> {
+pub struct Client<T: Read + Write> {
     host: String,
     tag_sequence_number: Cell<u32>,
     stream: T
@@ -182,7 +180,7 @@ impl fmt::Display for Connection {
 }
 
 //todo
-impl<T: Read + Write> Connection<T> {
+impl<T: Read + Write> Client<T> {
     pub fn connect(host: &str, ssl_mode: SslMode) -> result::Result<Connection, error::Error> {
 
         let mut conn = match ssl_mode {
@@ -367,7 +365,7 @@ impl<T: Read + Write> Connection<T> {
         self.execute_command(&"close")
     }
 
-    pub fn logout(&mut self) -> Result<Response, error::Error> {
+    fn logout(&mut self) -> Result<Response, error::Error> {
         match self.execute_command(&"logout") {
             Ok(Response::Ok(data)) => {
                 for x in data.iter() {
@@ -474,9 +472,18 @@ impl<T: Read + Write> Connection<T> {
         }
     }
 
+    pub fn authenticate(&mut self, saslMech: SaslMechenism) -> result::Result<Response, error::Error> {
+
+        self.execute_command(&format!("authenticate {}", ???))
+    }
+
+
+
+
+
     fn login(&mut self, credentials: (&str, &str)) -> result::Result<Response, error::Error> {
         let (usr_lgn, pass) = credentials;
-        self.execute_command(&format!("LOGIN {} {}", usr_lgn, pass))
+        self.execute_command(&format!("login {} {}", usr_lgn, pass))
     }
 
     fn start_tls(&mut self) -> Result<Response, error::Error> {
@@ -494,6 +501,12 @@ impl<T: Read + Write> Connection<T> {
 
     fn get_current_tag(&self) -> String {
         format!("{}_{}", Connection::tag_prefix(), self.tag_sequence_number.get())
+    }
+
+
+    //todo
+    pub fn disconnect(&mut self) -> result::Result<Response, error::Error> {
+        unimplemented!()
     }
 }
 

@@ -24,20 +24,26 @@ atarashii_imap = "<current version of atarashii_imap>"
 extern crate atarashii_imap;
 extern crate openssl;
 
-use atarashii_imap::{Connection, Response, SslMode};
+use atarashii_imap::{Client, Response, SslMode};
 use native_tls::{TlsConnector, TlsConnectorBuilder, TlsStream, SslMethod, SslConnectorBuilder};
 //.......
 
-match Connection::open("imap.gmail.com", "gmail_login@gmail.com", "password", SslMode::Implicit) {
-  Ok(mut conn) => {
-    match conn.select("inbox") {
-      Ok(sel_res) => {
-        println!("select cmd result: {}", sel_res);
+match Client::connect("imap.gmail.com") {
+  Ok(mut client) => {
+    match conn.authenticate("login123@gmail.com", "password") {
+        //todo
+
+        // doing stuff with client
+        // ............
+
+        client.disconnect();
       },
-      Err(e) => println!("select cmd error")
+
+      Err(e) => println!("authentication error")
     }
   },
-  Err(e) => panic!("Unable to open connection")
+
+  Err(e) => panic!("connection error")
 }
 
 ```
